@@ -93,6 +93,7 @@
 #include "bgpd/bgp_evpn_mh.h"
 #include "bgpd/bgp_mac.h"
 #include "bgpd/bgp_orr.h"
+#include "bgpd/bgp_ls.h"
 
 DEFINE_MTYPE_STATIC(BGPD, PEER_TX_SHUTDOWN_MSG, "Peer shutdown message (TX)");
 DEFINE_MTYPE_STATIC(BGPD, BGP_EVPN_INFO, "BGP EVPN instance information");
@@ -8145,6 +8146,9 @@ void bgp_init(unsigned short instance)
 
 	/* BFD init */
 	bgp_bfd_init(bm->master);
+
+	/* BGP-LS init */
+	bgp_link_state_init();
 
 	bgp_lp_vty_init();
 

@@ -814,7 +814,7 @@ void subgroup_default_originate(struct update_subgroup *subgrp, int withdraw)
 	afi = SUBGRP_AFI(subgrp);
 	safi = SUBGRP_SAFI(subgrp);
 
-	if (!(afi == AFI_IP || afi == AFI_IP6))
+	if (!(afi == AFI_IP || afi == AFI_IP6 || afi == AFI_LINK_STATE))
 		return;
 
 	if (safi == SAFI_LABELED_UNICAST)
