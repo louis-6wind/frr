@@ -81,7 +81,10 @@ void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
 	bool use_profile;
 	bool onlink;
 	bool mhop;
+	bool source;
 	int family;
+	struct ipaddr ia_src = {};
+	struct in6_addr *ia_srcp = NULL;
 
 	use_interface = false;
 	use_profile = yang_dnode_exists(dnode, "./profile");
@@ -89,6 +92,7 @@ void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
 		 && yang_dnode_get_bool(dnode, "../onlink");
 	mhop = yang_dnode_exists(dnode, "./multi-hop")
 		&& yang_dnode_get_bool(dnode, "./multi-hop");
+	source = yang_dnode_exists(dnode, "./source");
 
 	switch (sn->type) {
 	case STATIC_IPV4_GATEWAY_IFNAME:
@@ -118,10 +122,17 @@ void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
 	if (sn->nh_vrf_id != VRF_DEFAULT)
 		bfd_sess_set_vrf(sn->bsp, sn->nh_vrf_id);
 
+	if (source) {
+		yang_dnode_get_ip(&ia_src, dnode, "./source", NULL);
+		ia_srcp = (struct in6_addr *)&ia_src.ip;
+	} else
+		ia_srcp = NULL;
+
 	if (family == AF_INET)
-		bfd_sess_set_ipv4_addrs(sn->bsp, NULL, &sn->addr.ipv4);
+		bfd_sess_set_ipv4_addrs(sn->bsp, (struct in_addr *)ia_srcp,
+					&sn->addr.ipv4);
 	else
-		bfd_sess_set_ipv6_addrs(sn->bsp, NULL, &sn->addr.ipv6);
+		bfd_sess_set_ipv6_addrs(sn->bsp, ia_srcp, &sn->addr.ipv6);
 
 	bfd_sess_set_interface(sn->bsp, use_interface ? sn->ifname : NULL);
 
@@ -166,6 +177,34 @@ void static_next_hop_bfd_profile(struct static_nexthop *sn, const char *name)
 
 	bfd_sess_set_profile(sn->bsp, name);
 	bfd_sess_install(sn->bsp);
+}
+
+void static_next_hop_bfd_source(struct static_nexthop *sn,
+				const struct lyd_node *dnode)
+{
+	struct ipaddr ia_src = {}, ia_dst = {};
+	struct in6_addr *ia_srcp = NULL;
+
+	if (sn->bsp == NULL)
+		return;
+
+	if (yang_dnode_exists(dnode, "./source")) {
+		yang_dnode_get_ip(&ia_src, dnode, NULL);
+		ia_srcp = (struct in6_addr *)&ia_src.ip;
+	} else
+		ia_srcp = NULL;
+
+	if (!yang_dnode_exists(dnode, "../gateway"))
+		return;
+	yang_dnode_get_ip(&ia_dst, dnode, "../gateway", NULL);
+
+	if (ia_dst.ipa_type == IPADDR_V4)
+		bfd_sess_set_ipv4_addrs(sn->bsp, (struct in_addr *)ia_srcp,
+					(struct in_addr *)&ia_dst.ip);
+	else
+		bfd_sess_set_ipv6_addrs(sn->bsp,
+					(struct in6_addr *)ia_srcp,
+					(struct in6_addr *)&ia_dst.ip);
 }
 
 /*
