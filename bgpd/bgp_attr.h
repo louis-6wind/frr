@@ -173,6 +173,7 @@ struct attr {
 	uint8_t nh_flag;
 
 #define BGP_ATTR_NH_VALID 0x01
+#define BGP_ATTR_NH_MP_PREFER_GLOBAL 0x02 /* MP Nexthop preference */
 
 	/* Path origin attribute */
 	uint8_t origin;
@@ -222,9 +223,6 @@ struct attr {
 
 	/* MP Nexthop length */
 	uint8_t mp_nexthop_len;
-
-	/* MP Nexthop preference */
-	uint8_t mp_nexthop_prefer_global;
 
 	/* Static MAC for EVPN */
 	uint8_t sticky;
