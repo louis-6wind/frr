@@ -174,6 +174,7 @@ struct attr {
 
 #define BGP_ATTR_NH_VALID 0x01
 #define BGP_ATTR_NH_MP_PREFER_GLOBAL 0x02 /* MP Nexthop preference */
+#define BGP_ATTR_NH_REFRESH 0x04
 
 	/* Path origin attribute */
 	uint8_t origin;
