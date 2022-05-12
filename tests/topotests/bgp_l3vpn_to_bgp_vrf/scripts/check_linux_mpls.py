@@ -81,3 +81,31 @@ if ret != False and found != None:
         "wait",
         "CE3->CE4 (loopback) ping",
     )
+    luCommand(
+        "r1",
+        'for i in $(seq 5); do ip vrf exec r1-cust1 ping 6.0.3.1 -I 10.4.5.6 -c 1 && break; sleep 0.1; done',
+        " 0. packet loss",
+        "wait",
+        "R1(r1-cust1)->CE3/4 (loopback) ping",
+    )
+    luCommand(
+        "r1",
+        'for i in $(seq 5); do ip vrf exec r1-cust1 ping 6.0.3.1 -I 10.4.5.6 -c 1 && break; sleep 0.1; done',
+        " 0. packet loss",
+        "pass",
+        "R1(r1-cust1)->CE3/4 (loopback) ping",
+    )
+    luCommand(
+        "r1",
+        'for i in $(seq 5); do ip vrf exec r1-cust1 ping 6.0.3.1 -I 10.4.5.6 -c 1 && break; sleep 0.1; done',
+        " 0. packet loss",
+        "wait",
+        "R1(r1-cust1)->CE3/4 (loopback) ping",
+    )
+    luCommand(
+        "r1",
+        'for i in $(seq 5); do ip vrf exec r1-cust5 ping 6.0.3.1 -I 29.0.0.1 -c 1 && break; sleep 0.1; done',
+        " 0. packet loss",
+        "pass",
+        "R1(r1-cust5)->CE3/4 ( (loopback) ping",
+    )
