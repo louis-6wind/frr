@@ -25,8 +25,10 @@
 #ifndef ISIS_TLVS_H
 #define ISIS_TLVS_H
 
+#include "segment_routing.h"
 #include "openbsd-tree.h"
 #include "prefix.h"
+#include "flex_algo.h"
 
 DECLARE_MTYPE(ISIS_SUBTLV);
 
@@ -118,7 +120,7 @@ struct isis_spine_leaf {
 enum isis_threeway_state {
 	ISIS_THREEWAY_DOWN = 2,
 	ISIS_THREEWAY_INITIALIZING = 1,
-	ISIS_THREEWAY_UP = 0
+	ISIS_THREEWAY_UP = 0,
 };
 
 struct isis_threeway_adj {
@@ -193,18 +195,15 @@ struct isis_lan_adj_sid {
 #define ISIS_ROUTER_CAP_FLAG_D	0x02
 #define ISIS_ROUTER_CAP_SIZE	5
 
-/* Number of supported algorithm for Segment Routing.
- * Right now only 2 have been standardized:
- *  - 0: SPF
- *  - 1: Strict SPF
- */
-#define SR_ALGORITHM_COUNT	2
-#define SR_ALGORITHM_SPF	0
-#define SR_ALGORITHM_STRICT_SPF	1
-#define SR_ALGORITHM_UNSET	255
-
 #define MSD_TYPE_BASE_MPLS_IMPOSITION  0x01
 #define MSD_TLV_SIZE            2
+
+struct isis_router_cap_fad;
+struct isis_router_cap_fad {
+	uint8_t sysid[ISIS_SYS_ID_LEN + 2];
+
+	struct flex_algo fad;
+};
 
 struct isis_router_cap {
 	struct in_addr router_id;
@@ -216,6 +215,9 @@ struct isis_router_cap {
 	uint8_t algo[SR_ALGORITHM_COUNT];
 	/* RFC 8491 */
 	uint8_t msd;
+
+	/* draft-ietf-lsr-flex-algo */
+	struct isis_router_cap_fad *fads[SR_ALGORITHM_COUNT];
 };
 
 struct isis_item {
@@ -325,7 +327,7 @@ enum isis_tlv_context {
 	ISIS_CONTEXT_SUBTLV_NE_REACH,
 	ISIS_CONTEXT_SUBTLV_IP_REACH,
 	ISIS_CONTEXT_SUBTLV_IPV6_REACH,
-	ISIS_CONTEXT_MAX
+	ISIS_CONTEXT_MAX,
 };
 
 struct isis_subtlvs {
@@ -410,7 +412,7 @@ enum isis_tlv_type {
 	ISIS_SUBTLV_AVA_BW = 38,
 	ISIS_SUBTLV_USE_BW = 39,
 
-	ISIS_SUBTLV_MAX = 40
+	ISIS_SUBTLV_MAX = 40,
 };
 
 /* subTLVs size for TE and SR */
@@ -441,7 +443,7 @@ enum ext_subtlv_size {
 	ISIS_SUBTLV_HDR_SIZE = 2,
 	ISIS_SUBTLV_DEF_SIZE = 4,
 
-	ISIS_SUBTLV_MAX_SIZE = 180
+	ISIS_SUBTLV_MAX_SIZE = 180,
 };
 
 /* Macros to manage the optional presence of EXT subTLVs */
@@ -517,6 +519,15 @@ struct isis_ext_subtlvs {
 	/* Segment Routing Adjacency & LAN Adjacency Segment ID */
 	struct isis_item_list adj_sid;
 	struct isis_item_list lan_sid;
+
+	/* Application Specific Link Attribute - RFC 8919 */
+	bool asla_legacy;
+	uint8_t asla_standard_apps_length;
+	uint8_t asla_user_def_apps_length;
+	uint8_t asla_standard_apps;
+	uint8_t asla_user_def_apps;
+	uint32_t asla_admin_group;
+	struct admin_group asla_ext_admin_group;
 };
 
 #define IS_COMPAT_MT_TLV(tlv_type)                                             \
@@ -580,6 +591,9 @@ void isis_tlvs_set_dynamic_hostname(struct isis_tlvs *tlvs,
 				    const char *hostname);
 void isis_tlvs_set_router_capability(struct isis_tlvs *tlvs,
                      const struct isis_router_cap *cap);
+
+int isis_tlvs_sr_algo_count(const struct isis_router_cap *cap);
+
 void isis_tlvs_set_te_router_id(struct isis_tlvs *tlvs,
 				const struct in_addr *id);
 void isis_tlvs_set_te_router_id_ipv6(struct isis_tlvs *tlvs,
@@ -588,10 +602,11 @@ void isis_tlvs_add_oldstyle_ip_reach(struct isis_tlvs *tlvs,
 				     struct prefix_ipv4 *dest, uint8_t metric);
 void isis_tlvs_add_extended_ip_reach(struct isis_tlvs *tlvs,
 				     struct prefix_ipv4 *dest, uint32_t metric,
-				     bool external, struct sr_prefix_cfg *pcfg);
+				     bool external,
+				     struct sr_prefix_cfg **pcfgs);
 void isis_tlvs_add_ipv6_reach(struct isis_tlvs *tlvs, uint16_t mtid,
 			      struct prefix_ipv6 *dest, uint32_t metric,
-			      bool external, struct sr_prefix_cfg *pcfg);
+			      bool external, struct sr_prefix_cfg **pcfgs);
 void isis_tlvs_add_ipv6_dstsrc_reach(struct isis_tlvs *tlvs, uint16_t mtid,
 				     struct prefix_ipv6 *dest,
 				     struct prefix_ipv6 *src,

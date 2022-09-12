@@ -40,6 +40,7 @@
 #include "zclient.h"
 #include "vrf.h"
 #include "spf_backoff.h"
+#include "flex_algo.h"
 #include "lib/northbound_cli.h"
 #include "bfd.h"
 
@@ -62,6 +63,7 @@
 #include "isisd/isis_te.h"
 #include "isisd/isis_mt.h"
 #include "isisd/isis_sr.h"
+#include "isisd/isis_flex_algo.h"
 #include "isisd/fabricd.h"
 #include "isisd/isis_nb.h"
 
@@ -326,6 +328,11 @@ struct isis_area *isis_area_create(const char *area_tag, const char *vrf_name)
 	if (area->is_type & IS_LEVEL_2)
 		lsp_db_init(&area->lspdb[1]);
 
+	/* Flex-Algo */
+	area->affinity_maps = affinity_maps_alloc();
+	area->flex_algos = flex_algos_alloc(isis_flex_algo_data_alloc,
+					    isis_flex_algo_data_free);
+
 	spftree_area_init(area);
 
 	area->circuit_list = list_new();
@@ -522,6 +529,7 @@ void isis_area_destroy(struct isis_area *area)
 	isis_area_verify_routes(area);
 
 	isis_sr_area_term(area);
+	affinity_maps_free(area->affinity_maps);
 
 	isis_mpls_te_term(area);
 
@@ -3595,10 +3603,18 @@ struct cmd_node router_node = {
 };
 #endif /* ifdef FABRICD */
 
+struct cmd_node isis_flex_algo_node = {
+	.name = "isis-flex-algo",
+	.node = ISIS_FLEX_ALGO_NODE,
+	.parent_node = ISIS_NODE,
+	.prompt = "%s(config-router-flex-algo)# ",
+};
+
 void isis_init(void)
 {
 	/* Install IS-IS top node */
 	install_node(&router_node);
+	install_node(&isis_flex_algo_node);
 
 	install_element(VIEW_NODE, &show_isis_summary_cmd);
 
@@ -3688,6 +3704,7 @@ void isis_init(void)
 	install_element(CONFIG_NODE, &no_debug_isis_ldp_sync_cmd);
 
 	install_default(ROUTER_NODE);
+	install_default(ISIS_FLEX_ALGO_NODE);
 
 #ifdef FABRICD
 	install_element(CONFIG_NODE, &router_openfabric_cmd);

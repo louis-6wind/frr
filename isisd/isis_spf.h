@@ -33,6 +33,7 @@ enum spf_type {
 	SPF_TYPE_REVERSE,
 	SPF_TYPE_RLFA,
 	SPF_TYPE_TI_LFA,
+	SPF_TYPE_FLEX_ALGO,
 };
 
 struct isis_spf_adj {
@@ -50,11 +51,10 @@ struct isis_spf_adj {
 #define F_ISIS_SPF_ADJ_METRIC_INFINITY 0x04
 };
 
-struct isis_spftree *isis_spftree_new(struct isis_area *area,
-				      struct lspdb_head *lspdb,
-				      const uint8_t *sysid, int level,
-				      enum spf_tree_id tree_id,
-				      enum spf_type type, uint8_t flags);
+struct isis_spftree *
+isis_spftree_new(struct isis_area *area, struct lspdb_head *lspdb,
+		 const uint8_t *sysid, int level, enum spf_tree_id tree_id,
+		 enum spf_type type, uint8_t flags, uint8_t algorithm);
 struct isis_vertex *isis_spf_prefix_sid_lookup(struct isis_spftree *spftree,
 					       struct isis_prefix_sid *psid);
 void isis_spf_invalidate_routes(struct isis_spftree *tree);

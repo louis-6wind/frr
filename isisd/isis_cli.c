@@ -1702,6 +1702,120 @@ void cli_show_isis_prefix_sid(struct vty *vty, const struct lyd_node *dnode,
 	vty_out(vty, "\n");
 }
 
+/*
+ * XPath:
+ * /frr-isisd:isis/instance/segment-routing/algorithm-prefix-sids/algorithm-prefix-sid
+ */
+DEFPY_YANG(
+	isis_sr_prefix_sid_algorithm, isis_sr_prefix_sid_algorithm_cmd,
+	"segment-routing prefix <A.B.C.D/M|X:X::X:X/M>$prefix\
+              algorithm (128-255)$algorithm\
+              <absolute$sid_type (16-1048575)$sid_value|index$sid_type (0-65535)$sid_value>\
+              [<no-php-flag|explicit-null>$lh_behavior] [n-flag-clear$n_flag_clear]",
+	SR_STR
+	"Prefix SID\n"
+	"IPv4 Prefix\n"
+	"IPv6 Prefix\n"
+	"Algorithm Specific Prefix SID Configuration\n"
+	"Algorithm number\n"
+	"Specify the absolute value of Prefix Segment ID\n"
+	"The Prefix Segment ID value\n"
+	"Specify the index of Prefix Segment ID\n"
+	"The Prefix Segment ID index\n"
+	"Don't request Penultimate Hop Popping (PHP)\n"
+	"Upstream neighbor must replace prefix-sid with explicit null label\n"
+	"Not a node SID\n")
+{
+	nb_cli_enqueue_change(vty, ".", NB_OP_CREATE, NULL);
+	nb_cli_enqueue_change(vty, "./sid-value-type", NB_OP_MODIFY, sid_type);
+	nb_cli_enqueue_change(vty, "./sid-value", NB_OP_MODIFY, sid_value_str);
+	if (lh_behavior) {
+		const char *value;
+
+		if (strmatch(lh_behavior, "no-php-flag"))
+			value = "no-php";
+		else if (strmatch(lh_behavior, "explicit-null"))
+			value = "explicit-null";
+		else
+			value = "php";
+
+		nb_cli_enqueue_change(vty, "./last-hop-behavior", NB_OP_MODIFY,
+				      value);
+	} else
+		nb_cli_enqueue_change(vty, "./last-hop-behavior", NB_OP_MODIFY,
+				      NULL);
+	nb_cli_enqueue_change(vty, "./n-flag-clear", NB_OP_MODIFY,
+			      n_flag_clear ? "true" : "false");
+
+	return nb_cli_apply_changes(
+		vty,
+		"./segment-routing/algorithm-prefix-sids/algorithm-prefix-sid[prefix='%s'][algo='%s']",
+		prefix_str, algorithm_str);
+}
+
+DEFPY_YANG(
+	no_isis_sr_prefix_algorithm_sid, no_isis_sr_prefix_sid_algorithm_cmd,
+	"no segment-routing prefix <A.B.C.D/M|X:X::X:X/M>$prefix\
+              algorithm (128-255)$algorithm\
+              [<absolute$sid_type (16-1048575)|index (0-65535)> [<no-php-flag|explicit-null>]]\
+              [n-flag-clear]",
+	NO_STR SR_STR
+	"Prefix SID\n"
+	"IPv4 Prefix\n"
+	"IPv6 Prefix\n"
+	"Algorithm Specific Prefix SID Configuration\n"
+	"Algorithm number\n"
+	"Specify the absolute value of Prefix Segment ID\n"
+	"The Prefix Segment ID value\n"
+	"Specify the index of Prefix Segment ID\n"
+	"The Prefix Segment ID index\n"
+	"Don't request Penultimate Hop Popping (PHP)\n"
+	"Upstream neighbor must replace prefix-sid with explicit null label\n"
+	"Not a node SID\n")
+{
+	nb_cli_enqueue_change(vty, ".", NB_OP_DESTROY, NULL);
+
+	return nb_cli_apply_changes(
+		vty,
+		"./segment-routing/algorithm-prefix-sids/algorithm-prefix-sid[prefix='%s'][algo='%s']",
+		prefix_str, algorithm_str);
+	return CMD_SUCCESS;
+}
+
+void cli_show_isis_prefix_sid_algorithm(struct vty *vty,
+					const struct lyd_node *dnode,
+					bool show_defaults)
+{
+	const char *prefix;
+	const char *lh_behavior;
+	const char *sid_value_type;
+	const char *sid_value;
+	bool n_flag_clear;
+	uint32_t algorithm;
+
+	prefix = yang_dnode_get_string(dnode, "./prefix");
+	sid_value_type = yang_dnode_get_string(dnode, "./sid-value-type");
+	sid_value = yang_dnode_get_string(dnode, "./sid-value");
+	algorithm = yang_dnode_get_uint32(dnode, "./algo");
+	lh_behavior = yang_dnode_get_string(dnode, "./last-hop-behavior");
+	n_flag_clear = yang_dnode_get_bool(dnode, "./n-flag-clear");
+
+	vty_out(vty, " segment-routing prefix %s", prefix);
+	vty_out(vty, " algorithm %u", algorithm);
+	if (strmatch(sid_value_type, "absolute"))
+		vty_out(vty, " absolute");
+	else
+		vty_out(vty, " index");
+	vty_out(vty, " %s", sid_value);
+
+	if (strmatch(lh_behavior, "no-php"))
+		vty_out(vty, " no-php-flag");
+	else if (strmatch(lh_behavior, "explicit-null"))
+		vty_out(vty, " explicit-null");
+	if (n_flag_clear)
+		vty_out(vty, " n-flag-clear");
+	vty_out(vty, "\n");
+}
 
 /*
  * XPath: /frr-isisd:isis/instance/fast-reroute/level-{1,2}/lfa/priority-limit
@@ -2482,6 +2596,25 @@ void cli_show_ip_isis_circ_type(struct vty *vty, const struct lyd_node *dnode,
 }
 
 /*
+ * XPath: /frr-interface:lib/interface/frr-isisd:isis/affinity-flex-algo
+ */
+DEFPY_YANG(isis_affinity_flex_algo, isis_affinity_flex_algo_cmd,
+	   "[no] isis affinity flex-algo NAME...",
+	   NO_STR
+	   "IS-IS routing protocol\n"
+	   "Application specific interface affinities\n"
+	   "Affinities for Flexible Algorithm application\n"
+	   "Affinity names\n")
+{
+	return CMD_SUCCESS;
+}
+
+void cli_show_affinity_flex_algos(struct vty *vty, const struct lyd_node *dnode,
+				  bool show_defaults)
+{
+}
+
+/*
  * XPath: /frr-interface:lib/interface/frr-isisd:isis/network-type
  */
 DEFPY_YANG(isis_network, isis_network_cmd, "[no] isis network point-to-point",
@@ -3085,6 +3218,127 @@ void cli_show_isis_mpls_if_ldp_sync_holddown(struct vty *vty,
 		yang_dnode_get_string(dnode, NULL));
 }
 
+DEFPY_YANG_NOSH(flex_algo, flex_algo_cmd, "flex-algo (128-255)$algorithm",
+		"Flexible Algorithm\n"
+		"Flexible Algorithm Number\n")
+{
+	return CMD_SUCCESS;
+}
+
+DEFPY_YANG(no_flex_algo, no_flex_algo_cmd, "no flex-algo (128-255)$algorithm",
+	   NO_STR
+	   "Flexible Algorithm\n"
+	   "Flexible Algorithm Number\n")
+{
+	return CMD_SUCCESS;
+}
+
+DEFPY_YANG(advertise_definition, advertise_definition_cmd,
+	   "[no] advertise-definition",
+	   NO_STR "Advertise Local Flexible Algorithm\n")
+{
+	return CMD_SUCCESS;
+}
+
+DEFPY_YANG(affinity_include_any, affinity_include_any_cmd,
+	   "[no] affinity include-any NAME...",
+	   NO_STR
+	   "Affinity configuration\n"
+	   "Any Include with\n"
+	   "Include NAME list\n")
+{
+	return CMD_SUCCESS;
+}
+
+DEFPY_YANG(affinity_include_all, affinity_include_all_cmd,
+	   "[no] affinity include-all NAME...",
+	   NO_STR
+	   "Affinity configuration\n"
+	   "All Include with\n"
+	   "Include NAME list\n")
+{
+	return CMD_SUCCESS;
+}
+
+DEFPY_YANG(affinity_exclude_any, affinity_exclude_any_cmd,
+	   "[no] affinity exclude-any NAME...",
+	   NO_STR
+	   "Affinity configuration\n"
+	   "Any Exclude with\n"
+	   "Exclude NAME list\n")
+{
+	return CMD_SUCCESS;
+}
+
+DEFPY_YANG(prefix_metric, prefix_metric_cmd, "[no] prefix-metric",
+	   NO_STR "Use Flex-Algo Prefix Metric\n")
+{
+	return CMD_SUCCESS;
+}
+
+DEFPY_YANG(metric_type, metric_type_cmd,
+	   "[no] metric-type [igp$igp|te$te|delay$delay]",
+	   NO_STR
+	   "Metric-type used by flex-algo calculation\n"
+	   "Use IGP metric (default)\n"
+	   "Use Delay as metric\n"
+	   "Use Traffic Engineering metric\n")
+{
+	return CMD_SUCCESS;
+}
+
+DEFPY_YANG(priority, priority_cmd, "[no] priority (0-255)$priority",
+	   NO_STR
+	   "Flex-Algo definition priority\n"
+	   "Priority value\n")
+{
+	return CMD_SUCCESS;
+}
+
+DEFPY_YANG(fastreroute_disable, fastreroute_disable_cmd,
+	   "[no] fast-reroute disable",
+	   NO_STR
+	   "Configure Fast ReRoute\n"
+	   "Disable Fast ReRoute for Flex-Algo\n")
+{
+	return CMD_SUCCESS;
+}
+
+void cli_show_isis_flex_algo(struct vty *vty, const struct lyd_node *dnode,
+			     bool show_defaults)
+{
+}
+
+void cli_show_isis_flex_algo_end(struct vty *vty, const struct lyd_node *dnode)
+{
+}
+
+DEFPY_YANG(affinity_map, affinity_map_cmd,
+	   "affinity-map NAME$name bit-position (0-255)$position",
+	   "Affinity map configuration\n"
+	   "Affinity attribute name\n"
+	   "Bit position for affinity attribute value\n"
+	   "Bit position\n")
+{
+	return CMD_SUCCESS;
+}
+
+DEFPY_YANG(no_affinity_map, no_affinity_map_cmd,
+	   "no affinity-map NAME$name [bit-position (0-255)$position]",
+	   NO_STR
+	   "Affinity map configuration\n"
+	   "Affinity attribute name\n"
+	   "Bit position for affinity attribute value\n"
+	   "Bit position\n")
+{
+	return CMD_SUCCESS;
+}
+
+void cli_show_affinity_mapping(struct vty *vty, const struct lyd_node *dnode,
+			       bool show_defaults)
+{
+}
+
 void isis_cli_init(void)
 {
 	install_element(CONFIG_NODE, &router_isis_cmd);
@@ -3098,6 +3352,7 @@ void isis_cli_init(void)
 	install_element(INTERFACE_NODE, &no_ip_router_isis_vrf_cmd);
 	install_element(INTERFACE_NODE, &isis_bfd_cmd);
 	install_element(INTERFACE_NODE, &isis_bfd_profile_cmd);
+	install_element(INTERFACE_NODE, &isis_affinity_flex_algo_cmd);
 
 	install_element(ISIS_NODE, &net_cmd);
 
@@ -3160,6 +3415,8 @@ void isis_cli_init(void)
 	install_element(ISIS_NODE, &no_isis_sr_node_msd_cmd);
 	install_element(ISIS_NODE, &isis_sr_prefix_sid_cmd);
 	install_element(ISIS_NODE, &no_isis_sr_prefix_sid_cmd);
+	install_element(ISIS_NODE, &isis_sr_prefix_sid_algorithm_cmd);
+	install_element(ISIS_NODE, &no_isis_sr_prefix_sid_algorithm_cmd);
 	install_element(ISIS_NODE, &isis_frr_lfa_priority_limit_cmd);
 	install_element(ISIS_NODE, &isis_frr_lfa_tiebreaker_cmd);
 	install_element(ISIS_NODE, &isis_frr_lfa_load_sharing_cmd);
@@ -3215,6 +3472,19 @@ void isis_cli_init(void)
 	install_element(INTERFACE_NODE, &isis_mpls_if_ldp_sync_cmd);
 	install_element(INTERFACE_NODE, &isis_mpls_if_ldp_sync_holddown_cmd);
 	install_element(INTERFACE_NODE, &no_isis_mpls_if_ldp_sync_holddown_cmd);
+
+	install_element(ISIS_NODE, &flex_algo_cmd);
+	install_element(ISIS_NODE, &no_flex_algo_cmd);
+	install_element(ISIS_NODE, &affinity_map_cmd);
+	install_element(ISIS_NODE, &no_affinity_map_cmd);
+	install_element(ISIS_FLEX_ALGO_NODE, &advertise_definition_cmd);
+	install_element(ISIS_FLEX_ALGO_NODE, &affinity_include_any_cmd);
+	install_element(ISIS_FLEX_ALGO_NODE, &affinity_include_all_cmd);
+	install_element(ISIS_FLEX_ALGO_NODE, &affinity_exclude_any_cmd);
+	install_element(ISIS_FLEX_ALGO_NODE, &prefix_metric_cmd);
+	install_element(ISIS_FLEX_ALGO_NODE, &metric_type_cmd);
+	install_element(ISIS_FLEX_ALGO_NODE, &priority_cmd);
+	install_element(ISIS_FLEX_ALGO_NODE, &fastreroute_disable_cmd);
 }
 
 #endif /* ifndef FABRICD */
