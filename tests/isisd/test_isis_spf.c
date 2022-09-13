@@ -62,12 +62,13 @@ static void test_run_spf(struct vty *vty, const struct isis_topology *topology,
 	/* Run SPF. */
 	spf_type = reverse ? SPF_TYPE_REVERSE : SPF_TYPE_FORWARD;
 	spftree = isis_spftree_new(area, lspdb, root->sysid, level, tree,
-				   spf_type, F_SPFTREE_NO_ADJACENCIES);
+				   spf_type, F_SPFTREE_NO_ADJACENCIES,
+				   SR_ALGORITHM_SPF);
 	isis_run_spf(spftree);
 
 	/* Print the SPT and the corresponding routing table. */
 	isis_print_spftree(vty, spftree);
-	isis_print_routes(vty, spftree, false, false);
+	isis_print_routes(vty, spftree, NULL, false, false);
 
 	/* Cleanup SPF tree. */
 	isis_spftree_del(spftree);
@@ -84,8 +85,9 @@ static void test_run_lfa(struct vty *vty, const struct isis_topology *topology,
 
 	/* Run forward SPF in the root node. */
 	flags = F_SPFTREE_NO_ADJACENCIES;
-	spftree_self = isis_spftree_new(area, lspdb, root->sysid, level, tree,
-					SPF_TYPE_FORWARD, flags);
+	spftree_self =
+		isis_spftree_new(area, lspdb, root->sysid, level, tree,
+				 SPF_TYPE_FORWARD, flags, SR_ALGORITHM_SPF);
 	isis_run_spf(spftree_self);
 
 	/* Run forward SPF on all adjacent routers. */
@@ -97,9 +99,9 @@ static void test_run_lfa(struct vty *vty, const struct isis_topology *topology,
 	/* Print the SPT and the corresponding main/backup routing tables. */
 	isis_print_spftree(vty, spftree_self);
 	vty_out(vty, "Main:\n");
-	isis_print_routes(vty, spftree_self, false, false);
+	isis_print_routes(vty, spftree_self, NULL, false, false);
 	vty_out(vty, "Backup:\n");
-	isis_print_routes(vty, spftree_self, false, true);
+	isis_print_routes(vty, spftree_self, NULL, false, true);
 
 	/* Cleanup everything. */
 	isis_spftree_del(spftree_self);
@@ -120,8 +122,9 @@ static void test_run_rlfa(struct vty *vty, const struct isis_topology *topology,
 
 	/* Run forward SPF in the root node. */
 	flags = F_SPFTREE_NO_ADJACENCIES;
-	spftree_self = isis_spftree_new(area, lspdb, root->sysid, level, tree,
-					SPF_TYPE_FORWARD, flags);
+	spftree_self =
+		isis_spftree_new(area, lspdb, root->sysid, level, tree,
+				 SPF_TYPE_FORWARD, flags, SR_ALGORITHM_SPF);
 	isis_run_spf(spftree_self);
 
 	/* Run reverse SPF in the root node. */
@@ -175,9 +178,9 @@ static void test_run_rlfa(struct vty *vty, const struct isis_topology *topology,
 	/* Print the SPT and the corresponding main/backup routing tables. */
 	isis_print_spftree(vty, spftree_self);
 	vty_out(vty, "Main:\n");
-	isis_print_routes(vty, spftree_self, false, false);
+	isis_print_routes(vty, spftree_self, NULL, false, false);
 	vty_out(vty, "Backup:\n");
-	isis_print_routes(vty, spftree_self, false, true);
+	isis_print_routes(vty, spftree_self, NULL, false, true);
 
 	/* Cleanup everything. */
 	isis_spftree_del(spftree_self);
@@ -200,8 +203,9 @@ static void test_run_ti_lfa(struct vty *vty,
 
 	/* Run forward SPF in the root node. */
 	flags = F_SPFTREE_NO_ADJACENCIES;
-	spftree_self = isis_spftree_new(area, lspdb, root->sysid, level, tree,
-					SPF_TYPE_FORWARD, flags);
+	spftree_self =
+		isis_spftree_new(area, lspdb, root->sysid, level, tree,
+				 SPF_TYPE_FORWARD, flags, SR_ALGORITHM_SPF);
 	isis_run_spf(spftree_self);
 
 	/* Run reverse SPF in the root node. */
@@ -237,7 +241,7 @@ static void test_run_ti_lfa(struct vty *vty,
 	 * Print the post-convergence SPT and the corresponding routing table.
 	 */
 	isis_print_spftree(vty, spftree_pc);
-	isis_print_routes(vty, spftree_self, false, true);
+	isis_print_routes(vty, spftree_self, NULL, false, true);
 
 	/* Cleanup everything. */
 	isis_spftree_del(spftree_self);

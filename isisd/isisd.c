@@ -40,6 +40,7 @@
 #include "zclient.h"
 #include "vrf.h"
 #include "spf_backoff.h"
+#include "flex_algo.h"
 #include "lib/northbound_cli.h"
 #include "bfd.h"
 
@@ -62,6 +63,7 @@
 #include "isisd/isis_te.h"
 #include "isisd/isis_mt.h"
 #include "isisd/isis_sr.h"
+#include "isisd/isis_flex_algo.h"
 #include "isisd/fabricd.h"
 #include "isisd/isis_nb.h"
 
@@ -326,6 +328,11 @@ struct isis_area *isis_area_create(const char *area_tag, const char *vrf_name)
 	if (area->is_type & IS_LEVEL_2)
 		lsp_db_init(&area->lspdb[1]);
 
+	/* Flex-Algo */
+	area->affinity_maps = affinity_maps_alloc();
+	area->flex_algos = flex_algos_alloc(isis_flex_algo_data_alloc,
+					    isis_flex_algo_data_free);
+
 	spftree_area_init(area);
 
 	area->circuit_list = list_new();
@@ -522,6 +529,7 @@ void isis_area_destroy(struct isis_area *area)
 	isis_area_verify_routes(area);
 
 	isis_sr_area_term(area);
+	affinity_maps_free(area->affinity_maps);
 
 	isis_mpls_te_term(area);
 
@@ -2668,6 +2676,7 @@ void show_isis_database_lspdb_json(struct json_object *json,
 				   struct lspdb_head *lspdb,
 				   const char *sysid_str, int ui_level)
 {
+	struct json_object *array_json, *lsp_json;
 	struct isis_lsp *lsp;
 	int lsp_count;
 
@@ -2679,11 +2688,20 @@ void show_isis_database_lspdb_json(struct json_object *json,
 		}
 
 		if (lsp) {
+			json_object_object_get_ex(json, "lsps", &array_json);
+			if (!array_json) {
+				array_json = json_object_new_array();
+				json_object_object_add(json, "lsps",
+						       array_json);
+			}
+			lsp_json = json_object_new_object();
+			json_object_array_add(array_json, lsp_json);
+
 			if (ui_level == ISIS_UI_LEVEL_DETAIL)
-				lsp_print_detail(lsp, NULL, json,
+				lsp_print_detail(lsp, NULL, lsp_json,
 						 area->dynhostname, area->isis);
 			else
-				lsp_print_json(lsp, json, area->dynhostname,
+				lsp_print_json(lsp, lsp_json, area->dynhostname,
 					       area->isis);
 		} else if (sysid_str == NULL) {
 			lsp_count =
@@ -2755,6 +2773,8 @@ static void show_isis_database_json(struct json_object *json, const char *sysid_
 		json_object_object_add(area_json,"area",tag_area_json);
 		json_object_object_add(area_json,"levels",arr_json);
 		for (level = 0; level < ISIS_LEVELS; level++) {
+			if (lspdb_count(&area->lspdb[level]) == 0)
+				continue;
 			lsp_json = json_object_new_object();
 			show_isis_database_lspdb_json(lsp_json, area, level,
 						      &area->lspdb[level],
@@ -3069,11 +3089,22 @@ int isis_area_passwd_hmac_md5_set(struct isis_area *area, int level,
 void isis_area_invalidate_routes(struct isis_area *area, int levels)
 {
 	for (int level = ISIS_LEVEL1; level <= ISIS_LEVEL2; level++) {
+		struct flex_algo *fa;
+		struct listnode *node;
+		struct isis_flex_algo_data *data;
+
 		if (!(level & levels))
 			continue;
 		for (int tree = SPFTREE_IPV4; tree < SPFTREE_COUNT; tree++) {
 			isis_spf_invalidate_routes(
 					area->spftree[tree][level - 1]);
+
+			for (ALL_LIST_ELEMENTS_RO(area->flex_algos->flex_algos,
+						  node, fa)) {
+				data = fa->data;
+				isis_spf_invalidate_routes(
+					data->spftree[tree][level - 1]);
+			}
 		}
 	}
 }
@@ -3081,7 +3112,7 @@ void isis_area_invalidate_routes(struct isis_area *area, int levels)
 void isis_area_verify_routes(struct isis_area *area)
 {
 	for (int tree = SPFTREE_IPV4; tree < SPFTREE_COUNT; tree++)
-		isis_spf_verify_routes(area, area->spftree[tree]);
+		isis_spf_verify_routes(area, area->spftree[tree], tree);
 }
 
 static void area_resign_level(struct isis_area *area, int level)
@@ -3095,6 +3126,22 @@ static void area_resign_level(struct isis_area *area, int level)
 		if (area->spftree[tree][level - 1]) {
 			isis_spftree_del(area->spftree[tree][level - 1]);
 			area->spftree[tree][level - 1] = NULL;
+		}
+	}
+
+	struct flex_algo *fa;
+	struct listnode *node;
+	struct isis_flex_algo_data *data;
+
+	for (int tree = SPFTREE_IPV4; tree < SPFTREE_COUNT; tree++) {
+		for (ALL_LIST_ELEMENTS_RO(area->flex_algos->flex_algos, node,
+					  fa)) {
+			data = fa->data;
+			if (data->spftree[level - 1]) {
+				isis_spftree_del(
+					data->spftree[tree][level - 1]);
+				data->spftree[tree][level - 1] = NULL;
+			}
 		}
 	}
 
@@ -3595,10 +3642,18 @@ struct cmd_node router_node = {
 };
 #endif /* ifdef FABRICD */
 
+struct cmd_node isis_flex_algo_node = {
+	.name = "isis-flex-algo",
+	.node = ISIS_FLEX_ALGO_NODE,
+	.parent_node = ISIS_NODE,
+	.prompt = "%s(config-router-flex-algo)# ",
+};
+
 void isis_init(void)
 {
 	/* Install IS-IS top node */
 	install_node(&router_node);
+	install_node(&isis_flex_algo_node);
 
 	install_element(VIEW_NODE, &show_isis_summary_cmd);
 
@@ -3688,6 +3743,7 @@ void isis_init(void)
 	install_element(CONFIG_NODE, &no_debug_isis_ldp_sync_cmd);
 
 	install_default(ROUTER_NODE);
+	install_default(ISIS_FLEX_ALGO_NODE);
 
 #ifdef FABRICD
 	install_element(CONFIG_NODE, &router_openfabric_cmd);

@@ -674,6 +674,112 @@ const struct frr_yang_module_info frr_isisd_info = {
 			}
 		},
 		{
+			.xpath = "/frr-isisd:isis/instance/segment-routing/algorithm-prefix-sids/algorithm-prefix-sid",
+			.cbs = {
+				.create = isis_instance_segment_routing_algorithm_prefix_sid_create,
+				.destroy = isis_instance_segment_routing_algorithm_prefix_sid_destroy,
+				.pre_validate = isis_instance_segment_routing_algorithm_prefix_sid_pre_validate,
+				.apply_finish = isis_instance_segment_routing_algorithm_prefix_sid_apply_finish,
+				.cli_show = cli_show_isis_prefix_sid_algorithm,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/segment-routing/algorithm-prefix-sids/algorithm-prefix-sid/sid-value-type",
+			.cbs = {
+				.modify = isis_instance_segment_routing_algorithm_prefix_sid_sid_value_type_modify,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/segment-routing/algorithm-prefix-sids/algorithm-prefix-sid/sid-value",
+			.cbs = {
+				.modify = isis_instance_segment_routing_algorithm_prefix_sid_sid_value_modify,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/segment-routing/algorithm-prefix-sids/algorithm-prefix-sid/last-hop-behavior",
+			.cbs = {
+				.modify = isis_instance_segment_routing_algorithm_prefix_sid_last_hop_behavior_modify,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/segment-routing/algorithm-prefix-sids/algorithm-prefix-sid/n-flag-clear",
+			.cbs = {
+				.modify = isis_instance_segment_routing_algorithm_prefix_sid_n_flag_clear_modify,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/flex-algos/flex-algo",
+			.cbs = {
+				.cli_show = cli_show_isis_flex_algo,
+				.cli_show_end = cli_show_isis_flex_algo_end,
+				.create = isis_instance_flex_algo_create,
+				.destroy = isis_instance_flex_algo_destroy,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/flex-algos/flex-algo/advertise-definition",
+			.cbs = {
+				.modify = isis_instance_flex_algo_advertise_definition_modify,
+				.destroy = isis_instance_flex_algo_advertise_definition_destroy,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/flex-algos/flex-algo/affinity-include-alls/affinity-include-all",
+			.cbs = {
+				.create = isis_instance_flex_algo_affinity_include_all_create,
+				.destroy = isis_instance_flex_algo_affinity_include_all_destroy,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/flex-algos/flex-algo/affinity-include-anies/affinity-include-any",
+			.cbs = {
+				.create = isis_instance_flex_algo_affinity_include_any_create,
+				.destroy = isis_instance_flex_algo_affinity_include_any_destroy,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/flex-algos/flex-algo/affinity-exclude-anies/affinity-exclude-any",
+			.cbs = {
+				.create = isis_instance_flex_algo_affinity_exclude_any_create,
+				.destroy = isis_instance_flex_algo_affinity_exclude_any_destroy,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/flex-algos/flex-algo/prefix-metric",
+			.cbs = {
+				.create = isis_instance_flex_algo_prefix_metric_create,
+				.destroy = isis_instance_flex_algo_prefix_metric_destroy,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/flex-algos/flex-algo/metric-type",
+			.cbs = {
+				.modify = isis_instance_flex_algo_metric_type_modify,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/flex-algos/flex-algo/priority",
+			.cbs = {
+				.modify = isis_instance_flex_algo_priority_modify,
+				.destroy = isis_instance_flex_algo_priority_destroy,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/affinity-mappings/affinity-mapping",
+			.cbs = {
+				.cli_show = cli_show_affinity_mapping,
+				.create = isis_instance_flex_algo_affinity_mapping_create,
+				.destroy = isis_instance_flex_algo_affinity_mapping_destroy,
+			},
+		},
+		{
+			.xpath = "/frr-isisd:isis/instance/affinity-mappings/affinity-mapping/value",
+			.cbs = {
+				.modify = isis_instance_flex_algo_affinity_mapping_value_modify,
+				.destroy = isis_instance_flex_algo_affinity_mapping_value_destroy,
+			},
+		},
+		{
 			.xpath = "/frr-isisd:isis/instance/mpls/ldp-sync",
 			.cbs = {
 				.cli_show = cli_show_isis_mpls_ldp_sync,
@@ -1044,6 +1150,19 @@ const struct frr_yang_module_info frr_isisd_info = {
 			.cbs = {
 				.modify = lib_interface_isis_fast_reroute_level_2_ti_lfa_link_fallback_modify,
 			}
+		},
+		{
+			.xpath = "/frr-interface:lib/interface/frr-isisd:isis/affinity-flex-algos",
+			.cbs = {
+				.cli_show = cli_show_affinity_flex_algos,
+			},
+		},
+		{
+			.xpath = "/frr-interface:lib/interface/frr-isisd:isis/affinity-flex-algos/flex-algo",
+			.cbs = {
+				.create = lib_interface_isis_affinity_flex_algo_create,
+				.destroy = lib_interface_isis_affinity_flex_algo_destroy,
+			},
 		},
 		{
 			.xpath = "/frr-interface:lib/interface/state/frr-isisd:isis",

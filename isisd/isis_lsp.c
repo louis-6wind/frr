@@ -59,6 +59,7 @@
 #include "isisd/fabricd.h"
 #include "isisd/isis_tx_queue.h"
 #include "isisd/isis_nb.h"
+#include "isisd/isis_flex_algo.h"
 
 DEFINE_MTYPE_STATIC(ISISD, ISIS_LSP, "ISIS LSP");
 
@@ -749,14 +750,11 @@ void lsp_print_json(struct isis_lsp *lsp, struct json_object *json,
 	char LSPid[255];
 	char age_out[8];
 	char b[200];
-	json_object *own_json;
 	char buf[256];
 
 	lspid_print(lsp->hdr.lsp_id, LSPid, sizeof(LSPid), dynhost, 1, isis);
-	own_json = json_object_new_object();
-	json_object_object_add(json, "lsp", own_json);
-	json_object_string_add(own_json, "id", LSPid);
-	json_object_string_add(own_json, "own", lsp->own_lsp ? "*" : " ");
+	json_object_string_add(json, "id", LSPid);
+	json_object_boolean_add(json, "own", lsp->own_lsp ? true : false);
 	json_object_int_add(json, "pdu-len", lsp->hdr.pdu_len);
 	snprintfrr(buf, sizeof(buf), "0x%08x", lsp->hdr.seqno);
 	json_object_string_add(json, "seq-number", buf);
@@ -817,17 +815,34 @@ int lsp_print_all(struct vty *vty, struct json_object *json,
 		  struct lspdb_head *head, char detail, char dynhost,
 		  struct isis *isis)
 {
+	struct json_object *array_json, *lsp_json = NULL;
 	struct isis_lsp *lsp;
 	int lsp_count = 0;
 
+	if (json) {
+		json_object_object_get_ex(json, "lsps", &array_json);
+		if (!array_json) {
+			array_json = json_object_new_array();
+			json_object_object_add(json, "lsps", array_json);
+		}
+	}
+
 	if (detail == ISIS_UI_LEVEL_BRIEF) {
 		frr_each (lspdb, head, lsp) {
-			lsp_print_common(lsp, vty, json, dynhost, isis);
+			if (json) {
+				lsp_json = json_object_new_object();
+				json_object_array_add(array_json, lsp_json);
+			}
+			lsp_print_common(lsp, vty, lsp_json, dynhost, isis);
 			lsp_count++;
 		}
 	} else if (detail == ISIS_UI_LEVEL_DETAIL) {
 		frr_each (lspdb, head, lsp) {
-			lsp_print_detail(lsp, vty, json, dynhost, isis);
+			if (json) {
+				lsp_json = json_object_new_object();
+				json_object_array_add(array_json, lsp_json);
+			}
+			lsp_print_detail(lsp, vty, lsp_json, dynhost, isis);
 			lsp_count++;
 		}
 	}
@@ -902,13 +917,21 @@ static void lsp_build_ext_reach_ipv4(struct isis_lsp *lsp,
 			isis_tlvs_add_oldstyle_ip_reach(lsp->tlvs, ipv4,
 							metric);
 		if (area->newmetric) {
-			struct sr_prefix_cfg *pcfg = NULL;
+			struct sr_prefix_cfg *pcfgs[SR_ALGORITHM_COUNT] = {
+				NULL};
 
 			if (area->srdb.enabled)
-				pcfg = isis_sr_cfg_prefix_find(area, ipv4);
+				for (int i = 0; i < SR_ALGORITHM_COUNT; i++) {
+					if (is_flex_algo(i) &&
+					    !isis_flex_algo_elected_supported(
+						    i, area))
+						continue;
+					pcfgs[i] = isis_sr_cfg_prefix_find(
+						area, ipv4, i);
+				}
 
 			isis_tlvs_add_extended_ip_reach(lsp->tlvs, ipv4, metric,
-							true, pcfg);
+							true, pcfgs);
 		}
 	}
 }
@@ -936,14 +959,22 @@ static void lsp_build_ext_reach_ipv6(struct isis_lsp *lsp,
 			metric = MAX_WIDE_PATH_METRIC;
 
 		if (!src_p || !src_p->prefixlen) {
-			struct sr_prefix_cfg *pcfg = NULL;
+			struct sr_prefix_cfg *pcfgs[SR_ALGORITHM_COUNT] = {
+				NULL};
 
 			if (area->srdb.enabled)
-				pcfg = isis_sr_cfg_prefix_find(area, p);
+				for (int i = 0; i < SR_ALGORITHM_COUNT; i++) {
+					if (is_flex_algo(i) &&
+					    !isis_flex_algo_elected_supported(
+						    i, area))
+						continue;
+					pcfgs[i] = isis_sr_cfg_prefix_find(
+						area, p, i);
+				}
 
 			isis_tlvs_add_ipv6_reach(lsp->tlvs,
 						 isis_area_ipv6_topology(area),
-						 p, metric, true, pcfg);
+						 p, metric, true, pcfgs);
 		} else if (isis_area_ipv6_dstsrc_enabled(area)) {
 			isis_tlvs_add_ipv6_dstsrc_reach(lsp->tlvs,
 							ISIS_MT_IPV6_DSTSRC,
@@ -983,6 +1014,40 @@ static struct isis_lsp *lsp_next_frag(uint8_t frag_num, struct isis_lsp *lsp0,
 	lsp_insert(&area->lspdb[level - 1], lsp);
 	return lsp;
 }
+
+
+static void
+isis_lsp_set_router_capability_fad(struct isis_area *area,
+				   struct isis_router_cap_fad *rcap_fad,
+				   struct flex_algo *fa)
+{
+	memset(rcap_fad->sysid, 0, ISIS_SYS_ID_LEN + 2);
+	memcpy(rcap_fad->sysid, area->isis->sysid, ISIS_SYS_ID_LEN);
+
+	rcap_fad->fad.algorithm = fa->algorithm;
+	rcap_fad->fad.metric_type = fa->metric_type;
+	rcap_fad->fad.calc_type = fa->calc_type;
+	rcap_fad->fad.priority = fa->priority;
+	rcap_fad->fad.m_flag = fa->m_flag;
+
+	rcap_fad->fad.admin_group_exclude_any.bitmap.data = NULL;
+	rcap_fad->fad.admin_group_exclude_any.bitmap.n = 0;
+	rcap_fad->fad.admin_group_exclude_any.bitmap.m = 0;
+	rcap_fad->fad.admin_group_include_any.bitmap.data = NULL;
+	rcap_fad->fad.admin_group_include_any.bitmap.n = 0;
+	rcap_fad->fad.admin_group_include_any.bitmap.m = 0;
+	rcap_fad->fad.admin_group_include_all.bitmap.data = NULL;
+	rcap_fad->fad.admin_group_include_all.bitmap.n = 0;
+	rcap_fad->fad.admin_group_include_all.bitmap.m = 0;
+
+	admin_group_copy(&rcap_fad->fad.admin_group_exclude_any,
+			 &fa->admin_group_exclude_any);
+	admin_group_copy(&rcap_fad->fad.admin_group_include_any,
+			 &fa->admin_group_include_any);
+	admin_group_copy(&rcap_fad->fad.admin_group_include_all,
+			 &fa->admin_group_include_all);
+}
+
 
 /*
  * Builds the LSP data part. This func creates a new frag whenever
@@ -1061,6 +1126,14 @@ static void lsp_build(struct isis_lsp *lsp, struct isis_area *area)
 	/* Add Router Capability TLV. */
 	if (area->isis->router_id != 0) {
 		struct isis_router_cap cap = {};
+		struct isis_router_cap_fad cap_fad[SR_ALGORITHM_COUNT] = {};
+		struct isis_router_cap_fad *rcap_fad;
+		struct listnode *node;
+		struct flex_algo *fa;
+
+		/* init SR algo list content to the default value */
+		for (int i = 0; i < SR_ALGORITHM_COUNT; i++)
+			cap.algo[i] = SR_ALGORITHM_UNSET;
 
 		cap.router_id.s_addr = area->isis->router_id;
 
@@ -1079,6 +1152,23 @@ static void lsp_build(struct isis_lsp *lsp, struct isis_area *area)
 			/* Then Algorithm */
 			cap.algo[0] = SR_ALGORITHM_SPF;
 			cap.algo[1] = SR_ALGORITHM_UNSET;
+			for (ALL_LIST_ELEMENTS_RO(area->flex_algos->flex_algos,
+						  node, fa)) {
+				if (fa->advertise_definition) {
+					isis_lsp_set_router_capability_fad(
+						area, &cap_fad[fa->algorithm],
+						fa);
+					rcap_fad = &cap_fad[fa->algorithm];
+				} else
+					rcap_fad = NULL;
+
+				if (!isis_flex_algo_elected_supported_local_fad(
+					    fa->algorithm, area, &rcap_fad))
+					continue;
+				lsp_debug("ISIS (%s):   SR Algorithm %u",
+					  area->area_tag, fa->algorithm);
+				cap.algo[fa->algorithm] = fa->algorithm;
+			}
 			/* SRLB */
 			cap.srlb.flags = 0;
 			range_size = srdb->config.srlb_upper_bound
@@ -1087,15 +1177,20 @@ static void lsp_build(struct isis_lsp *lsp, struct isis_area *area)
 			cap.srlb.lower_bound = srdb->config.srlb_lower_bound;
 			/* And finally MSD */
 			cap.msd = srdb->config.msd;
-		} else {
-			/* Disable SR Algorithm */
-			cap.algo[0] = SR_ALGORITHM_UNSET;
-			cap.algo[1] = SR_ALGORITHM_UNSET;
 		}
 
 		isis_tlvs_set_router_capability(lsp->tlvs, &cap);
-		lsp_debug("ISIS (%s): Adding Router Capabilities information",
-			  area->area_tag);
+
+		for (ALL_LIST_ELEMENTS_RO(area->flex_algos->flex_algos, node,
+					  fa)) {
+			if (!fa->advertise_definition)
+				continue;
+			lsp_debug("ISIS (%s):   Flex-Algo Definition %u",
+				  area->area_tag, fa->algorithm);
+			isis_tlvs_set_router_capability_fad(
+				lsp->tlvs, &cap_fad[fa->algorithm],
+				fa->algorithm);
+		}
 	}
 
 	/* IPv4 address and TE router ID TLVs.
@@ -1188,19 +1283,32 @@ static void lsp_build(struct isis_lsp *lsp, struct isis_area *area)
 				}
 
 				if (area->newmetric) {
-					struct sr_prefix_cfg *pcfg = NULL;
+					struct sr_prefix_cfg
+						*pcfgs[SR_ALGORITHM_COUNT] = {
+							NULL};
 
 					lsp_debug(
 						"ISIS (%s): Adding te-style IP reachability for %pFX",
 						area->area_tag, ipv4);
 
 					if (area->srdb.enabled)
-						pcfg = isis_sr_cfg_prefix_find(
-							area, ipv4);
+						for (int i = 0;
+						     i < SR_ALGORITHM_COUNT;
+						     i++) {
+							if (is_flex_algo(i) &&
+							    !isis_flex_algo_elected_supported(
+								    i, area))
+								continue;
+							pcfgs[i] =
+								isis_sr_cfg_prefix_find(
+									area,
+									ipv4,
+									i);
+						}
 
 					isis_tlvs_add_extended_ip_reach(
 						lsp->tlvs, ipv4, metric, false,
-						pcfg);
+						pcfgs);
 				}
 			}
 		}
@@ -1211,22 +1319,34 @@ static void lsp_build(struct isis_lsp *lsp, struct isis_area *area)
 
 			for (ALL_LIST_ELEMENTS_RO(circuit->ipv6_non_link,
 						  ipnode, ipv6)) {
-				struct sr_prefix_cfg *pcfg = NULL;
+				struct sr_prefix_cfg
+					*pcfgs[SR_ALGORITHM_COUNT] = {NULL};
 
 				lsp_debug(
 					"ISIS (%s): Adding IPv6 reachability for %pFX",
 					area->area_tag, ipv6);
 
 				if (area->srdb.enabled)
-					pcfg = isis_sr_cfg_prefix_find(area,
-								       ipv6);
+					for (int i = 0; i < SR_ALGORITHM_COUNT;
+					     i++) {
+						if (is_flex_algo(i) &&
+						    !isis_flex_algo_elected_supported(
+							    i, area))
+							continue;
+						pcfgs[i] =
+							isis_sr_cfg_prefix_find(
+								area, ipv6, i);
+					}
 
 				isis_tlvs_add_ipv6_reach(
 					lsp->tlvs,
 					isis_area_ipv6_topology(area), ipv6,
-					metric, false, pcfg);
+					metric, false, pcfgs);
 			}
 		}
+
+		/* ASLA for Flex-Algo */
+		isis_tlvs_add_asla_admin_group(circuit);
 
 		switch (circuit->circ_type) {
 		case CIRCUIT_T_BROADCAST:
