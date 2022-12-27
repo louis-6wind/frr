@@ -200,6 +200,8 @@ static enum node_type bgp_node_type(afi_t afi, safi_t safi)
 		}
 	case AFI_L2VPN:
 		return BGP_EVPN_NODE;
+	case AFI_LINK_STATE:
+		/* TODO */
 	case AFI_UNSPEC:
 	case AFI_MAX:
 		// We should never be here but to clarify the switch statement..
@@ -564,6 +566,8 @@ static const char *get_bgp_default_af_flag(afi_t afi, safi_t safi)
 		default:
 			return "unknown-afi/safi";
 		}
+	case AFI_LINK_STATE:
+		/* TODO */
 	case AFI_UNSPEC:
 	case AFI_MAX:
 		return "unknown-afi/safi";
