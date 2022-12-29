@@ -179,6 +179,12 @@ struct flowspec_prefix {
 	uintptr_t ptr;
 };
 
+struct linkstate_prefix {
+	uint8_t nrli_type ;
+	uint16_t prefixlen; /* length in bytes */
+	uintptr_t ptr;
+};
+
 /* FRR generic prefix structure. */
 struct prefix {
 	uint8_t family;
@@ -197,6 +203,7 @@ struct prefix {
 		uintptr_t ptr;
 		struct evpn_addr prefix_evpn; /* AF_EVPN */
 		struct flowspec_prefix prefix_flowspec; /* AF_FLOWSPEC */
+		struct linkstate_prefix prefix_linkstate;  /* AF_LINKSTATE */
 	} u __attribute__((aligned(8)));
 };
 
@@ -292,6 +299,14 @@ struct prefix_fs {
 	uint8_t family;
 	uint16_t prefixlen; /* unused */
 	struct flowspec_prefix  prefix __attribute__((aligned(8)));
+};
+
+
+/* Prefix for a BGP-LS entry */
+struct prefix_bgpls {
+	uint8_t family;
+	uint16_t prefixlen; /* unused */
+	struct linkstate_prefix  prefix __attribute__((aligned(8)));
 };
 
 struct prefix_sg {
