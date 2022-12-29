@@ -37,6 +37,7 @@
 #include "queue.h"
 #include "filter.h"
 #include "lib_errors.h"
+#include "config.h"
 
 #include "bgpd/bgpd.h"
 #include "bgpd/bgp_table.h"
@@ -1720,6 +1721,8 @@ static int bgp_open_receive(struct peer *peer, bgp_size_t size)
 			peer->afc[AFI_L2VPN][SAFI_EVPN];
 		peer->afc_nego[AFI_IP6][SAFI_FLOWSPEC] =
 			peer->afc[AFI_IP6][SAFI_FLOWSPEC];
+		peer->afc_nego[AFI_LINK_STATE][SAFI_LINK_STATE] =
+			peer->afc[AFI_LINK_STATE][SAFI_LINK_STATE];
 	}
 
 	/* Verify valid local address present based on negotiated
