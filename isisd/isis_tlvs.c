@@ -34,6 +34,8 @@
 #include "sbuf.h"
 #include "network.h"
 
+#include "lib/isis.h"
+
 #include "isisd/isisd.h"
 #include "isisd/isis_tlvs.h"
 #include "isisd/isis_common.h"
@@ -660,7 +662,7 @@ static void format_item_ext_subtlvs(struct isis_ext_subtlvs *exts,
 					lan->flags & EXT_SUBTLV_LINK_ADJ_SID_PFLG
 						? '1'
 						: '0',
-					isis_format_id(lan->neighbor_id, 6));
+					lib_isis_format_id(lan->neighbor_id, 6));
 			}
 	}
 }
@@ -1634,11 +1636,11 @@ static void format_item_oldstyle_reach(uint16_t mtid, struct isis_item *i,
 		old_json = json_object_new_object();
 		json_object_object_add(json, "old-reach-style", old_json);
 		json_object_string_add(old_json, "is-reach",
-				       isis_format_id(r->id, 7));
+				       lib_isis_format_id(r->id, 7));
 		json_object_int_add(old_json, "metric", r->metric);
 	} else
 		sbuf_push(buf, indent, "IS Reachability: %s (Metric: %hhu)\n",
-			  isis_format_id(r->id, 7), r->metric);
+			  lib_isis_format_id(r->id, 7), r->metric);
 }
 
 static void free_item_oldstyle_reach(struct isis_item *i)
@@ -1713,10 +1715,10 @@ static void format_item_lan_neighbor(uint16_t mtid, struct isis_item *i,
 
 	if (json) {
 		json_object_string_add(json, "lan-neighbor",
-				       isis_format_id(n->mac, 6));
+				       lib_isis_format_id(n->mac, 6));
 	} else
 		sbuf_push(buf, indent, "LAN Neighbor: %s\n",
-			  isis_format_id(n->mac, 6));
+			  lib_isis_format_id(n->mac, 6));
 }
 
 static void free_item_lan_neighbor(struct isis_item *i)
@@ -1787,7 +1789,7 @@ static void format_item_lsp_entry(uint16_t mtid, struct isis_item *i,
 		struct json_object *lsp_json;
 		lsp_json = json_object_new_object();
 		json_object_object_add(json, "lsp-entry", lsp_json);
-		json_object_string_add(lsp_json, "id", isis_format_id(e->id, 8));
+		json_object_string_add(lsp_json, "id", lib_isis_format_id(e->id, 8));
 		snprintfrr(buf,sizeof(buf),"0x%08x",e->seqno);
 		json_object_string_add(lsp_json, "seq", buf);
 		snprintfrr(buf,sizeof(buf),"0x%04hx",e->checksum);
@@ -1796,7 +1798,7 @@ static void format_item_lsp_entry(uint16_t mtid, struct isis_item *i,
 	} else
 	sbuf_push(buf, indent,
 		  "LSP Entry: %s, seq 0x%08x, cksum 0x%04hx, lifetime %hus\n",
-		  isis_format_id(e->id, 8), e->seqno, e->checksum,
+		  lib_isis_format_id(e->id, 8), e->seqno, e->checksum,
 		  e->rem_lifetime);
 }
 
@@ -1878,7 +1880,7 @@ static void format_item_extended_reach(uint16_t mtid, struct isis_item *i,
 			reach_json, "mt-id",
 			(mtid == ISIS_MT_IPV4_UNICAST) ? "Extended" : "MT");
 		json_object_string_add(reach_json, "id",
-				       isis_format_id(r->id, 7));
+				       lib_isis_format_id(r->id, 7));
 		json_object_int_add(reach_json, "metric", r->metric);
 		if (mtid != ISIS_MT_IPV4_UNICAST)
 			json_object_string_add(reach_json, "mt-name",
@@ -1890,7 +1892,7 @@ static void format_item_extended_reach(uint16_t mtid, struct isis_item *i,
 	} else {
 		sbuf_push(buf, indent, "%s Reachability: %s (Metric: %u)",
 			  (mtid == ISIS_MT_IPV4_UNICAST) ? "Extended" : "MT",
-			  isis_format_id(r->id, 7), r->metric);
+			  lib_isis_format_id(r->id, 7), r->metric);
 		if (mtid != ISIS_MT_IPV4_UNICAST)
 			sbuf_push(buf, 0, " %s", isis_mtid2str(mtid));
 		sbuf_push(buf, 0, "\n");
@@ -3092,7 +3094,7 @@ format_tlv_threeway_adj(const struct isis_threeway_adj *threeway_adj,
 			return;
 		json_object_string_add(
 			three_json, "neigh-system-id",
-			isis_format_id(threeway_adj->neighbor_id, 6));
+			lib_isis_format_id(threeway_adj->neighbor_id, 6));
 		json_object_int_add(three_json, "neigh-ext-circuit-id",
 				    threeway_adj->neighbor_circuit_id);
 	} else {
@@ -3106,7 +3108,7 @@ format_tlv_threeway_adj(const struct isis_threeway_adj *threeway_adj,
 			return;
 
 		sbuf_push(buf, indent, "  Neighbor System ID: %s\n",
-			  isis_format_id(threeway_adj->neighbor_id, 6));
+			  lib_isis_format_id(threeway_adj->neighbor_id, 6));
 		sbuf_push(buf, indent, "  Neighbor Extended Circuit ID: %u\n",
 			  threeway_adj->neighbor_circuit_id);
 	}
@@ -3948,21 +3950,21 @@ static void format_tlv_purge_originator(struct isis_purge_originator *poi,
 
 		json_object_string_add(
 			purge_json, "id",
-			isis_format_id(poi->generator, sizeof(poi->generator)));
+			lib_isis_format_id(poi->generator, sizeof(poi->generator)));
 		if (poi->sender_set) {
 			json_object_string_add(
 				purge_json, "rec-from",
-				isis_format_id(poi->sender,
+				lib_isis_format_id(poi->sender,
 					       sizeof(poi->sender)));
 		}
 	} else {
 		sbuf_push(buf, indent, "Purge Originator Identification:\n");
 		sbuf_push(
 			buf, indent, "  Generator: %s\n",
-			isis_format_id(poi->generator, sizeof(poi->generator)));
+			lib_isis_format_id(poi->generator, sizeof(poi->generator)));
 		if (poi->sender_set) {
 			sbuf_push(buf, indent, "  Received-From: %s\n",
-				  isis_format_id(poi->sender,
+				  lib_isis_format_id(poi->sender,
 						 sizeof(poi->sender)));
 		}
 	}

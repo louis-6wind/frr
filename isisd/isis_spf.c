@@ -40,6 +40,8 @@
 #include "srcdest_table.h"
 #include "vrf.h"
 
+#include "lib/isis.h"
+
 #include "isis_errors.h"
 #include "isis_constants.h"
 #include "isis_common.h"
@@ -1226,7 +1228,7 @@ static void isis_spf_preload_tent(struct isis_spftree *spftree,
 		if (isis_lfa_excise_adj_check(spftree, adj_id)) {
 			if (IS_DEBUG_LFA)
 				zlog_debug("ISIS-SPF: excising adjacency %s",
-					   isis_format_id(sadj->id,
+					   lib_isis_format_id(sadj->id,
 							  ISIS_SYS_ID_LEN + 1));
 			continue;
 		}
@@ -1680,7 +1682,7 @@ static void isis_spf_loop(struct isis_spftree *spftree,
 		lsp = lsp_for_vertex(spftree, vertex);
 		if (!lsp) {
 			zlog_warn("ISIS-SPF: No LSP found for %s",
-				  isis_format_id(vertex->N.id,
+				  lib_isis_format_id(vertex->N.id,
 						 sizeof(vertex->N.id)));
 			continue;
 		}
