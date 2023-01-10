@@ -1061,6 +1061,12 @@ int bgp_nlri_parse_linkstate(struct peer *peer, struct attr *attr,
 			break;
 		}
 
+		if (BGP_DEBUG(linkstate, LINKSTATE)) {
+			zlog_debug("LS Rx %s %s %pFX",
+				   withdraw ? "Withdraw" : "Update",
+				   afi2str(afi), &p);
+		}
+
 		/* Process the route. */
 		if (withdraw)
 			bgp_withdraw(peer, &p, 0, attr, afi, safi,
