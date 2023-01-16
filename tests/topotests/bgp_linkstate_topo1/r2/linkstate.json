@@ -1,0 +1,92 @@
+{
+  "routes": {
+    "Link OSPFv3 ID:0xffffffffffffffff Local{AS:4294967295 ID:4294967295 Area:4294967295 Rtr:10.10.10.11:2.2.2.2} Remote{AS:4294967295 ID:4294967295 Area:4294967295 Rtr:10.10.10.10:1.1.1.1} Link{IPv4:10.1.0.1 Neigh-IPv4:10.1.0.2 IPv6:2001::1 Neigh-IPv6:2001::2 MT:0,2}/132": [
+      {
+        "valid": true,
+        "bestpath": true,
+        "pathFrom": "external",
+        "prefix": "Link OSPFv3 ID:0xffffffffffffffff Local{AS:4294967295 ID:4294967295 Area:4294967295 Rtr:10.10.10.11:2.2.2.2} Remote{AS:4294967295 ID:4294967295 Area:4294967295 Rtr:10.10.10.10:1.1.1.1} Link{IPv4:10.1.0.1 Neigh-IPv4:10.1.0.2 IPv6:2001::1 Neigh-IPv6:2001::2 MT:0,2}",
+        "prefixLen": 132,
+        "weight": 0,
+        "origin": "IGP"
+      }
+    ],
+    "IPv6-Prefix OSPFv3 ID:0x20 Local{AS:65001 ID:0 Area:0 Rtr:10.10.10.10} Prefix{OSPF-Route-Type:1 IPv6:12:12::12:12/128 MT:2}/74": [
+      {
+        "valid": true,
+        "bestpath": true,
+        "pathFrom": "external",
+        "prefix": "IPv6-Prefix OSPFv3 ID:0x20 Local{AS:65001 ID:0 Area:0 Rtr:10.10.10.10} Prefix{OSPF-Route-Type:1 IPv6:12:12::12:12/128 MT:2}",
+        "prefixLen": 74,
+        "weight": 0,
+        "origin": "IGP"
+      }
+    ],
+    "IPv6-Prefix ISIS-L2 ID:0x20 Local{AS:65001 ID:0 Rtr:0000.0000.1003.00} Prefix{IPv6:12:12::12:12/128 MT:2}/74": [
+      {
+        "valid": true,
+        "bestpath": true,
+        "pathFrom": "external",
+        "prefix": "IPv6-Prefix ISIS-L2 ID:0x20 Local{AS:65001 ID:0 Rtr:0000.0000.1003.00} Prefix{IPv6:12:12::12:12/128 MT:2}",
+        "prefixLen": 74,
+        "weight": 0,
+        "origin": "IGP"
+      }
+    ],
+    "IPv4-Prefix OSPFv2 ID:0x20 Local{AS:65001 ID:0 Area:0 Rtr:10.10.10.10:1.1.1.1} Prefix{IPv4:89.10.11.0/24}/64": [
+      {
+        "valid": true,
+        "bestpath": true,
+        "pathFrom": "external",
+        "prefix": "IPv4-Prefix OSPFv2 ID:0x20 Local{AS:65001 ID:0 Area:0 Rtr:10.10.10.10:1.1.1.1} Prefix{IPv4:89.10.11.0/24}",
+        "prefixLen": 64,
+        "weight": 0,
+        "origin": "IGP"
+      }
+    ],
+    "Node OSPFv2 ID:0x20 Local{AS:65001 ID:0 Area:0 Rtr:10.10.10.10:1.1.1.1}/48": [
+      {
+        "valid": true,
+        "bestpath": true,
+        "pathFrom": "external",
+        "prefix": "Node OSPFv2 ID:0x20 Local{AS:65001 ID:0 Area:0 Rtr:10.10.10.10:1.1.1.1}",
+        "prefixLen": 48,
+        "weight": 0,
+        "origin": "IGP"
+      }
+    ],
+    "Node OSPFv2 ID:0x20 Local{AS:65001 ID:0 Area:0 Rtr:10.10.10.10}/48": [
+      {
+        "valid": true,
+        "bestpath": true,
+        "pathFrom": "external",
+        "prefix": "Node OSPFv2 ID:0x20 Local{AS:65001 ID:0 Area:0 Rtr:10.10.10.10}",
+        "prefixLen": 48,
+        "weight": 0,
+        "origin": "IGP"
+      }
+    ],
+    "Node ISIS-L1 ID:0x20 Local{AS:65001 ID:0 Rtr:0000.0000.1003.00}/48": [
+      {
+        "valid": true,
+        "bestpath": true,
+        "pathFrom": "external",
+        "prefix": "Node ISIS-L1 ID:0x20 Local{AS:65001 ID:0 Rtr:0000.0000.1003.00}",
+        "prefixLen": 48,
+        "weight": 0,
+        "origin": "IGP"
+      }
+    ],
+    "Link ISIS-L1 ID:0x20 Local{AS:65001 ID:0 Rtr:0000.0000.1001} Remote{AS:65001 ID:0 Rtr:0000.0000.1000} Link{IPv4:10.1.0.1 Neigh-IPv4:10.1.0.2 IPv6:2001::1 Neigh-IPv6:2001::2 MT:0,2}/132": [
+      {
+        "valid": true,
+        "bestpath": true,
+        "pathFrom": "external",
+        "prefix": "Link ISIS-L1 ID:0x20 Local{AS:65001 ID:0 Rtr:0000.0000.1001} Remote{AS:65001 ID:0 Rtr:0000.0000.1000} Link{IPv4:10.1.0.1 Neigh-IPv4:10.1.0.2 IPv6:2001::1 Neigh-IPv6:2001::2 MT:0,2}",
+        "prefixLen": 132,
+        "weight": 0,
+        "origin": "IGP"
+      }
+    ]
+  }
+}
