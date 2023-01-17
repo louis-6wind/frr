@@ -1322,6 +1322,10 @@ void bgp_zebra_announce(struct bgp_dest *dest, const struct prefix *p,
 	uint32_t bos = 0;
 	uint32_t exp = 0;
 
+	if (afi == AFI_LINK_STATE)
+		/* nothing to install */
+		return;
+
 	/* Don't try to install if we're not connected to Zebra or Zebra doesn't
 	 * know of this instance.
 	 */
