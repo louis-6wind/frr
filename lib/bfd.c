@@ -149,7 +149,6 @@ static const struct in6_addr i6a_zero;
  */
 static void bfd_nht_zclient_connect(struct thread *thread);
 
-static void bfd_nht_zclient_connected(struct zclient *zclient);
 static int bfd_nht_update(ZAPI_CALLBACK_ARGS);
 
 static void bfd_source_cache_get(struct bfd_session_params *session);
@@ -1396,17 +1395,6 @@ static void bfd_nht_zclient_connect(struct thread *thread)
 
 	if (bsglobal.debugging)
 		zlog_debug("BFD NHT zclient connection succeeded");
-}
-
-static void bfd_nht_zclient_connected(struct zclient *zclient)
-{
-	struct bfd_source_cache *source;
-
-	if (bsglobal.debugging)
-		zlog_debug("BFD NHT zclient connected");
-
-	SLIST_FOREACH (source, &bsglobal.source_list, entry)
-		bfd_source_cache_register(source);
 }
 
 static int bfd_nht_update(ZAPI_CALLBACK_ARGS)
