@@ -185,6 +185,7 @@ static int ospf6_zebra_import_check_update(ZAPI_CALLBACK_ARGS)
 	ospf6->nssa_default_import_check.status = !!nhr.nexthop_num;
 	ospf6_abr_nssa_type_7_defaults(ospf6);
 
+	bfd_nht_update(cmd, zclient, length, vrf_id);
 	return 0;
 }
 

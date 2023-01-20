@@ -114,6 +114,10 @@ static int bgp_router_id_update(ZAPI_CALLBACK_ARGS)
 static int bgp_read_nexthop_update(ZAPI_CALLBACK_ARGS)
 {
 	bgp_parse_nexthop_update(cmd, vrf_id);
+
+	/* BFD integration */
+	bfd_nht_update(cmd, zclient, length, vrf_id);
+
 	return 0;
 }
 

@@ -731,6 +731,9 @@ int pim_parse_nexthop_update(ZAPI_CALLBACK_ARGS)
 		return 0;
 	}
 
+	/* BFD integration */
+	bfd_nht_update(cmd, zclient, length, vrf_id);
+
 	if (cmd == ZEBRA_NEXTHOP_UPDATE) {
 		rpf.rpf_addr = pim_addr_from_prefix(&match);
 		pnc = pim_nexthop_cache_find(pim, &rpf);

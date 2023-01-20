@@ -2149,6 +2149,9 @@ static zclient_handler *const ospf_handlers[] = {
 	[ZEBRA_REDISTRIBUTE_ROUTE_ADD] = ospf_zebra_read_route,
 	[ZEBRA_REDISTRIBUTE_ROUTE_DEL] = ospf_zebra_read_route,
 
+	/* bfd integration */
+	[ZEBRA_NEXTHOP_UPDATE] = bfd_nht_update,
+
 	[ZEBRA_OPAQUE_MESSAGE] = ospf_opaque_msg_handler,
 
 	[ZEBRA_CLIENT_CLOSE_NOTIFY] = ospf_zebra_client_close_notify,

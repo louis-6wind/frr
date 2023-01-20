@@ -473,6 +473,9 @@ extern bool bfd_protocol_integration_debug(void);
  */
 extern bool bfd_protocol_integration_shutting_down(void);
 
+extern int bfd_nht_update(ZAPI_CALLBACK_ARGS);
+
+
 #ifdef __cplusplus
 }
 #endif

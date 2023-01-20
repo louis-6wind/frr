@@ -838,6 +838,9 @@ static zclient_handler *const isis_handlers[] = {
 
 	[ZEBRA_OPAQUE_MESSAGE] = isis_opaque_msg_handler,
 
+	/* bfd integration */
+	[ZEBRA_NEXTHOP_UPDATE] = bfd_nht_update,
+
 	[ZEBRA_CLIENT_CLOSE_NOTIFY] = isis_zebra_client_close_notify,
 };
 

@@ -237,6 +237,9 @@ static int static_zebra_nexthop_update(ZAPI_CALLBACK_ARGS)
 	} else
 		zlog_err("No nhtd?");
 
+	/* BFD integration */
+	bfd_nht_update(cmd, zclient, length, vrf_id);
+
 	return 1;
 }
 
