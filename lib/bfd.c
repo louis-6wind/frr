@@ -153,9 +153,8 @@ static void bfd_source_cache_put(struct bfd_session_params *session);
 static inline void
 bfd_source_cache_register(const struct bfd_source_cache *source)
 {
-	zclient_send_rnh(bsglobal.zc, ZEBRA_NEXTHOP_REGISTER,
-			 &source->address, SAFI_UNICAST, false, false,
-			 source->vrf_id);
+	zclient_send_rnh(bsglobal.zc, ZEBRA_NEXTHOP_REGISTER, &source->address,
+			 SAFI_UNICAST, false, false, source->vrf_id);
 }
 
 static inline void
