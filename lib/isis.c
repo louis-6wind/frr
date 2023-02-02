@@ -58,3 +58,41 @@ const char *lib_isis_format_id(const uint8_t *id, size_t len)
 
 	return rv;
 }
+
+
+/* len of xx.xxxx.xxxx.xxxx.xxxx.xxxx.xxxx.xxxx.xxxx.xxxx.xx */
+/* + place for #0 termination */
+char isonet[51];
+
+/*
+ * This converts the isonet to its printable format
+ */
+const char *lib_isonet_print(const uint8_t *from, int len)
+{
+	int i = 0;
+	char tbuf[4];
+	isonet[0] = '\0';
+
+	if (!from)
+		return "unknown";
+
+	while (i < len) {
+		if (i & 1) {
+			snprintf(tbuf, sizeof(tbuf), "%02x", *(from + i));
+			strlcat(isonet, tbuf, sizeof(isonet));
+		} else {
+			if (i == (len - 1)) { /* No dot at the end of address */
+				snprintf(tbuf, sizeof(tbuf), "%02x",
+					 *(from + i));
+				strlcat(isonet, tbuf, sizeof(isonet));
+			} else {
+				snprintf(tbuf, sizeof(tbuf), "%02x.",
+					 *(from + i));
+				strlcat(isonet, tbuf, sizeof(isonet));
+			}
+		}
+		i++;
+	}
+
+	return isonet;
+}

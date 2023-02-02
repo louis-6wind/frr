@@ -24,5 +24,6 @@
 #define _FRR_LIB_ISIS_H_
 
 const char *lib_isis_format_id(const uint8_t *id, size_t len);
+const char *lib_isonet_print(const uint8_t *from, int len);
 
 #endif /* _FRR_LIB_ISIS_H_ */

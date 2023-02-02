@@ -1545,10 +1545,10 @@ static void format_item_area_address(uint16_t mtid, struct isis_item *i,
 
 	if (json) {
 		json_object_string_add(json, "area-addr",
-				       isonet_print(addr->addr, addr->len));
+				       lib_isonet_print(addr->addr, addr->len));
 	} else {
 		sbuf_push(buf, indent, "Area Address: %s\n",
-			  isonet_print(addr->addr, addr->len));
+			  lib_isonet_print(addr->addr, addr->len));
 	}
 }
 

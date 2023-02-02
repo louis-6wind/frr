@@ -639,7 +639,7 @@ void isis_adj_print_json(struct isis_adjacency *adj, struct json_object *json,
 			     i++) {
 				json_object_string_add(
 					area_addr_json, "isonet",
-					isonet_print(adj->area_addresses[i]
+					lib_isonet_print(adj->area_addresses[i]
 							     .area_addr,
 						     adj->area_addresses[i]
 							     .addr_len));
@@ -823,7 +823,7 @@ void isis_adj_print_vty(struct isis_adjacency *adj, struct vty *vty,
 			for (unsigned int i = 0; i < adj->area_address_count;
 			     i++) {
 				vty_out(vty, "      %s\n",
-					isonet_print(adj->area_addresses[i]
+					lib_isonet_print(adj->area_addresses[i]
 							     .area_addr,
 						     adj->area_addresses[i]
 							     .addr_len));

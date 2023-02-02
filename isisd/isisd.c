@@ -2393,7 +2393,7 @@ static void common_isis_summary_json(struct json_object *json,
 						  area_addr)) {
 				json_object_string_add(
 					area_json, "net",
-					isonet_print(area_addr->area_addr,
+					lib_isonet_print(area_addr->area_addr,
 						     area_addr->addr_len +
 							     ISIS_SYS_ID_LEN +
 							     1));
@@ -2497,7 +2497,7 @@ static void common_isis_summary_vty(struct vty *vty, struct isis *isis)
 			for (ALL_LIST_ELEMENTS_RO(area->area_addrs, node2,
 						  area_addr)) {
 				vty_out(vty, "  Net: %s\n",
-					isonet_print(area_addr->area_addr,
+					lib_isonet_print(area_addr->area_addr,
 						     area_addr->addr_len
 							     + ISIS_SYS_ID_LEN
 							     + 1));
@@ -3441,7 +3441,7 @@ static int isis_config_write(struct vty *vty)
 				for (ALL_LIST_ELEMENTS_RO(area->area_addrs,
 							  node2, area_addr)) {
 					vty_out(vty, " net %s\n",
-						isonet_print(
+						lib_isonet_print(
 							area_addr->area_addr,
 							area_addr->addr_len
 								+ ISIS_SYS_ID_LEN

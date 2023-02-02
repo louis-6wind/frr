@@ -40,7 +40,7 @@ int sysid2buff(uint8_t *, const char *);
 /*
  * Printing functions
  */
-const char *isonet_print(const uint8_t *, int len);
+const char *lib_isonet_print(const uint8_t *, int len);
 const char *sysid_print(const uint8_t *);
 const char *snpa_print(const uint8_t *);
 const char *rawlspid_print(const uint8_t *);

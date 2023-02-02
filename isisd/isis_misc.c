@@ -48,45 +48,9 @@
 
 /* staticly assigned vars for printing purposes */
 struct in_addr new_prefix;
-/* len of xx.xxxx.xxxx.xxxx.xxxx.xxxx.xxxx.xxxx.xxxx.xxxx.xx */
-/* + place for #0 termination */
-char isonet[51];
 /* len of xxYxxMxWxdxxhxxmxxs + place for #0 termination */
 char datestring[20];
 char nlpidstring[30];
-
-/*
- * This converts the isonet to its printable format
- */
-const char *isonet_print(const uint8_t *from, int len)
-{
-	int i = 0;
-	char tbuf[4];
-	isonet[0] = '\0';
-
-	if (!from)
-		return "unknown";
-
-	while (i < len) {
-		if (i & 1) {
-			snprintf(tbuf, sizeof(tbuf), "%02x", *(from + i));
-			strlcat(isonet, tbuf, sizeof(isonet));
-		} else {
-			if (i == (len - 1)) { /* No dot at the end of address */
-				snprintf(tbuf, sizeof(tbuf), "%02x",
-					 *(from + i));
-				strlcat(isonet, tbuf, sizeof(isonet));
-			} else {
-				snprintf(tbuf, sizeof(tbuf), "%02x.",
-					 *(from + i));
-				strlcat(isonet, tbuf, sizeof(isonet));
-			}
-		}
-		i++;
-	}
-
-	return isonet;
-}
 
 /*
  * Returns 0 on error, length of buff on ok
