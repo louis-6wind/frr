@@ -812,7 +812,7 @@ static bool autorp_recv_discovery(struct pim_autorp *autorp, uint8_t rpcnt, uint
 			}
 
 			/* Now get a new prefix list */
-			pl = prefix_list_get(AFI_IP, 0, plname);
+			pl = prefix_list_get(AFI_IP, 0, 0, plname);
 
 			for (j = 0; j < rp->grpcnt; ++j) {
 				/* This will just set grp to the same pointer on the first loop, but offset will
