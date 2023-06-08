@@ -75,6 +75,7 @@
 #include "bgpd/bgp_flowspec.h"
 #include "bgpd/bgp_flowspec_util.h"
 #include "bgpd/bgp_pbr.h"
+#include "bgpd/bgp_rtc.h"
 
 #include "bgpd/bgp_route_clippy.c"
 
@@ -2521,6 +2522,14 @@ bool subgroup_announce_check(struct bgp_dest *dest, struct bgp_path_info *pi,
 	if (bgp_check_role_applicability(afi, safi) &&
 	    bgp_otc_egress(peer, attr))
 		return false;
+
+	/* RTC-Filtering */
+	if (peer->afc[AFI_IP][SAFI_RTC]) {
+		/* The update group should only have one peer */
+		onlypeer = SUBGRP_PFIRST(subgrp)->peer;
+		if (bgp_rtc_filter(onlypeer, attr, p))
+			return false;
+	}
 
 	if (filter->advmap.update_type == UPDATE_TYPE_WITHDRAW &&
 	    filter->advmap.aname &&
