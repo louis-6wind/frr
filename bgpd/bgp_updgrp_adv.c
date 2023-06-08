@@ -31,6 +31,7 @@
 #include "bgpd/bgp_aspath.h"
 #include "bgpd/bgp_packet.h"
 #include "bgpd/bgp_fsm.h"
+#include "bgpd/bgp_rtc.h"
 #include "bgpd/bgp_mplsvpn.h"
 #include "bgpd/bgp_updgrp.h"
 #include "bgpd/bgp_advertise.h"
@@ -543,6 +544,7 @@ bool bgp_adj_out_set_subgroup(struct bgp_dest *dest,
 	struct peer_af *paf;
 	struct bgp *bgp;
 	uint32_t attr_hash = 0;
+	bool rtc_in_subgrp = false;
 
 	peer = SUBGRP_PEER(subgrp);
 	afi = SUBGRP_AFI(subgrp);
@@ -580,10 +582,17 @@ bool bgp_adj_out_set_subgroup(struct bgp_dest *dest,
 	if (likely(CHECK_FLAG(bgp->flags, BGP_FLAG_SUPPRESS_DUPLICATES)))
 		attr_hash = attrhash_key_make(attr);
 
-	if (!CHECK_FLAG(subgrp->sflags, SUBGRP_STATUS_FORCE_UPDATES) &&
+	SUBGRP_FOREACH_PEER (subgrp, paf) {
+		if (bgp_peer_get_rtc_plist(paf->peer)) {
+			/* one of the peer has an rtc prefix-list */
+			rtc_in_subgrp = true;
+			break;
+		}
+	}
+
+	if (!CHECK_FLAG(subgrp->sflags, SUBGRP_STATUS_FORCE_UPDATES) && !rtc_in_subgrp &&
 	    attr_hash && adj->attr_hash == attr_hash &&
-	    bgp_labels_cmp(path->extra ? path->extra->labels : NULL,
-			   adj->labels)) {
+	    bgp_labels_cmp(path->extra ? path->extra->labels : NULL, adj->labels)) {
 		if (BGP_DEBUG(update, UPDATE_OUT)) {
 			char attr_str[BUFSIZ] = {0};
 

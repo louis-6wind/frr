@@ -5,6 +5,7 @@
  */
 
 #include "bgpd/bgp_rtc.h"
+#include "bgpd/bgp_debug.h"
 
 int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *packet, bool withdraw)
 {
@@ -76,6 +77,66 @@ struct prefix_list *bgp_peer_get_rtc_plist(struct peer *peer)
 		return prefix_list_get(AFI_IP, 0, 1, bgp_router_id_str);
 	else
 		return prefix_bgp_rtc_lookup(AFI_IP, bgp_router_id_str);
+}
+
+int bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom)
+{
+	uint8_t sub_type = 0;
+	struct prefix cmp;
+	uint8_t *pnt;
+	bool rt_found = false;
+	char *ecom_str;
+	struct prefix_list *rtc_plist = bgp_peer_get_rtc_plist(peer);
+
+	/* Build prefix to compare with */
+	cmp.family = AF_RTC;
+	cmp.prefixlen = BGP_RTC_MAX_PREFIXLEN;
+	cmp.u.prefix_rtc.origin_as = peer->as;
+
+	if (!rtc_plist) {
+		if (BGP_DEBUG(update, UPDATE_OUT)) {
+			ecom_str = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
+			zlog_debug("Accepted a prefix with EC(%s) to peer %pBP because RTC prefix-list does not exist",
+				   ecom_str, peer);
+			XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
+		}
+		return false;
+	}
+
+	for (uint32_t i = 0; i < ecom->size; i++) {
+		/* Retrieve value field */
+		pnt = ecom->val + (i * ecom->unit_size);
+
+		sub_type = *++pnt;
+
+		if (sub_type == ECOMMUNITY_ROUTE_TARGET) {
+			rt_found = true;
+
+			memcpy(&cmp.u.prefix_rtc.route_target, ecom->val + (i * ecom->unit_size),
+			       ECOMMUNITY_SIZE);
+			if (prefix_list_apply_ext(rtc_plist, NULL, &cmp, true) == PREFIX_PERMIT) {
+				if (BGP_DEBUG(update, UPDATE_OUT)) {
+					ecom_str = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
+					zlog_debug("Accepted a prefix with EC(%s) to peer %pBP because of RTC prefix-list: case 0",
+						   ecom_str, peer);
+					XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
+				}
+				return false;
+			}
+		}
+	}
+
+	if (!rt_found)
+		return false;
+
+	if (BGP_DEBUG(update, UPDATE_OUT)) {
+		ecom_str = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
+		zlog_debug("Filtered a prefix with EC(%s) to peer %pBP because of RTC prefix-list",
+			   ecom_str, peer);
+		XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
+	}
+
+	return true;
 }
 
 static void bgp_rtc_add_static(struct bgp *bgp, struct ecommunity_val *eval, uint16_t prefixlen)
