@@ -65,6 +65,7 @@
 #include "bgpd/bgp_mac.h"
 #include "bgpd/bgp_flowspec.h"
 #include "bgpd/bgp_conditional_adv.h"
+#include "bgpd/bgp_rtc.h"
 #ifdef ENABLE_BGP_VNC
 #include "bgpd/rfapi/bgp_rfapi_cfg.h"
 #endif
@@ -10323,6 +10324,26 @@ static int vpn_policy_getdirs(struct vty *vty, const char *dstr, int *dodir)
 		return CMD_WARNING_CONFIG_FAILED;
 	}
 	return CMD_SUCCESS;
+}
+
+/* For testing purpose, static route of RTC. */
+DEFUN(rtc_network, rtc_network_cmd, "rt WORD",
+      "Add a route-target to announce\n"
+      "Specify the route-target e.g 65000:100/96\n")
+{
+	VTY_DECLVAR_CONTEXT(bgp, bgp);
+	return bgp_rtc_static_from_str(vty, bgp, argv[1]->arg, true);
+}
+
+
+/* For testing purpose, static route of RTC. */
+DEFUN(no_rtc_network, no_rtc_network_cmd, "no rt WORD",
+      NO_STR
+      "Remove a route-target no longer to announce\n"
+      "Specify the route-target e.g 65000:100/96\n")
+{
+	VTY_DECLVAR_CONTEXT(bgp, bgp);
+	return bgp_rtc_static_from_str(vty, bgp, argv[2]->arg, false);
 }
 
 DEFPY (af_rt_vpn_imexport,
@@ -20709,6 +20730,10 @@ void bgp_vty_init(void)
 	install_element(BGP_RTC_NODE, &bgp_maxpaths_ibgp_cmd);
 	install_element(BGP_RTC_NODE, &no_bgp_maxpaths_ibgp_cmd);
 	install_element(BGP_RTC_NODE, &bgp_maxpaths_ibgp_cluster_cmd);
+
+	/* Route-Target constraint - static prefixes */
+	install_element(BGP_RTC_NODE, &no_rtc_network_cmd);
+	install_element(BGP_RTC_NODE, &rtc_network_cmd);
 
 	/* "timers bgp" commands. */
 	install_element(BGP_NODE, &bgp_timers_cmd);

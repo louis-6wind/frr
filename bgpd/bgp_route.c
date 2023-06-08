@@ -6984,15 +6984,19 @@ static void bgp_nexthop_reachability_check(afi_t afi, safi_t safi,
 
 			bgp_path_info_set_flag(dest, bpi, BGP_PATH_VALID);
 		}
+	} else 	if (safi == SAFI_RTC) {
+		/* always mark static RTC as valid */
+		bgp_unlink_nexthop(bpi);
+		bgp_path_info_set_flag(dest, bpi, BGP_PATH_VALID);
 	}
 }
 
-static struct bgp_static *bgp_static_new(void)
+struct bgp_static *bgp_static_new(void)
 {
 	return XCALLOC(MTYPE_BGP_STATIC, sizeof(struct bgp_static));
 }
 
-static void bgp_static_free(struct bgp_static *bgp_static)
+void bgp_static_free(struct bgp_static *bgp_static)
 {
 	XFREE(MTYPE_ROUTE_MAP_NAME, bgp_static->rmap.name);
 	route_map_counter_decrement(bgp_static->rmap.map);
@@ -16709,7 +16713,28 @@ void bgp_config_write_network(struct vty *vty, struct bgp *bgp, afi_t afi,
 
 		p = bgp_dest_get_prefix(dest);
 
-		vty_out(vty, "  network %pFX", p);
+		if (safi == SAFI_RTC) {
+			/* Only prefixes with a length of more than 48 have the
+			 * type and subtype field set. If those aren't set
+			 * ecommunity_ecom2str returns just UNK:
+			 */
+			if (p->prefixlen >= 48) {
+				struct ecommunity *ecom =
+					ecommunity_parse((unsigned char *)&p->u.prefix_rtc
+								 .route_target,
+							 8, false);
+				char *b = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_ROUTE_MAP,
+							      ECOMMUNITY_ROUTE_TARGET);
+
+				vty_out(vty, "  rt %s", b);
+				ecommunity_unintern(&ecom);
+				XFREE(MTYPE_ECOMMUNITY_STR, b);
+			} else
+				vty_out(vty, "  rt 0:0");
+
+			vty_out(vty, "/%d", p->prefixlen);
+		} else
+			vty_out(vty, "  network %pFX", p);
 
 		if (bgp_static->label_index != BGP_INVALID_LABEL_INDEX)
 			vty_out(vty, " label-index %u",
