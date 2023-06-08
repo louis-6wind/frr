@@ -5,6 +5,7 @@
  */
 
 #include "bgpd/bgp_rtc.h"
+#include "bgpd/bgp_debug.h"
 
 int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *packet, bool withdraw)
 {
@@ -55,4 +56,49 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 	bgp_announce_route(peer, AFI_L2VPN, SAFI_EVPN, false);
 
 	return BGP_NLRI_PARSE_OK;
+}
+
+int bgp_rtc_filter(struct peer *peer, struct attr *attr, const struct prefix *p)
+{
+	struct ecommunity *ecom = bgp_attr_get_ecommunity(attr);
+	uint8_t sub_type = 0;
+	struct prefix cmp;
+	uint8_t *pnt;
+
+	if (ecom == NULL)
+		return false;
+
+	/* Build prefix to compare with */
+	cmp.family = AF_RTC;
+	cmp.prefixlen = BGP_RTC_MAX_PREFIXLEN;
+	cmp.u.prefix_rtc.origin_as = peer->as;
+
+
+	for (uint32_t i = 0; i < ecom->size; i++) {
+		/* Retrieve value field */
+		pnt = ecom->val + (i * ecom->unit_size);
+
+		sub_type = *++pnt;
+
+		if (sub_type == ECOMMUNITY_ROUTE_TARGET) {
+			if (peer->rtc_plist == NULL) {
+				if (BGP_DEBUG(update, UPDATE_OUT)) {
+					zlog_debug("Filtered prefix %pFX because RTC prefix-list does not exist",
+						   p);
+				}
+				return true;
+			}
+
+			memcpy(&cmp.u.prefix_rtc.route_target, ecom->val + (i * ecom->unit_size),
+			       ECOMMUNITY_SIZE);
+			if (prefix_list_apply_ext(peer->rtc_plist, NULL, &cmp, true) == PREFIX_DENY) {
+				if (BGP_DEBUG(update, UPDATE_OUT)) {
+					zlog_debug("Filtered prefix %pFX because of RTC prefix-list",
+						   p);
+				}
+				return true;
+			}
+		}
+	}
+	return false;
 }
