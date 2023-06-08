@@ -128,6 +128,9 @@ struct evpn_addr {
 struct rtc_info {
 	uint8_t route_target[8];
 	uint32_t origin_as;
+
+#define RTC_INFO_FLAG_RT_MATCH (1 << 0)
+	uint8_t flags;
 };
 
 /*

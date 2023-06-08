@@ -201,6 +201,18 @@ int prefix_match(union prefixconstptr unet, union prefixconstptr upfx)
 	int offset;
 	int shift;
 	const uint8_t *np, *pp;
+	uint8_t nplen, pplen;
+
+	if (n->family == AF_RTC && CHECK_FLAG(n->u.prefix_rtc.flags, RTC_INFO_FLAG_RT_MATCH)) {
+		/* for use with rtc prefix-list: compare the route-target values only */
+		nplen = n->prefixlen == 32 ? 0 : n->prefixlen;
+		pplen = p->prefixlen == 32 ? 0 : p->prefixlen;
+
+		if (nplen > pplen)
+			return 0;
+
+		return !memcmp(n->u.prefix_rtc.route_target, p->u.prefix_rtc.route_target, 8);
+	}
 
 	/* If n's prefix is longer than p's one return 0. */
 	if (n->prefixlen > p->prefixlen)
