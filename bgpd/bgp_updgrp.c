@@ -139,6 +139,7 @@ static void conf_copy(struct peer *dst, struct peer *src, afi_t afi,
 
 	dst->host = XSTRDUP(MTYPE_BGP_PEER_HOST, src->host);
 	dst->cap = src->cap;
+	dst->afc[AFI_IP][SAFI_RTC] = src->afc[AFI_IP][SAFI_RTC];
 	dst->af_cap[afi][safi] = src->af_cap[afi][safi];
 	dst->afc_nego[afi][safi] = src->afc_nego[afi][safi];
 	dst->orf_plist[afi][safi] = src->orf_plist[afi][safi];
@@ -438,6 +439,10 @@ static unsigned int updgrp_hash_key_make(const void *p)
 	    || CHECK_FLAG(peer->af_flags[afi][safi], PEER_FLAG_MAX_PREFIX_OUT))
 		key = jhash_1word(jhash(peer->host, strlen(peer->host), SEED2),
 				  key);
+
+	if (afi == AFI_L2VPN && safi == SAFI_EVPN && peer->afc[AFI_IP][SAFI_RTC])
+		key = jhash_1word(jhash(peer->host, strlen(peer->host), SEED2), key);
+
 	/*
 	 * Multiple sessions with the same neighbor should get their own
 	 * update-group if they have different roles.
@@ -518,6 +523,9 @@ static unsigned int updgrp_hash_key_make(const void *p)
 				      PEER_CAP_ORF_PREFIX_SM_RCV),
 			   (intmax_t)CHECK_FLAG(peer->af_flags[afi][safi],
 						PEER_FLAG_MAX_PREFIX_OUT));
+
+		zlog_debug("%pBP Update Group Hash: RTC: %u", peer, peer->afc[AFI_IP][SAFI_RTC]);
+
 		zlog_debug(
 			"%pBP Update Group Hash: local role: %u AIGP: %d SOO: %s",
 			peer, peer->local_role,
@@ -669,6 +677,10 @@ static bool updgrp_hash_cmp(const void *p1, const void *p2)
 	    (CHECK_FLAG(flags1, PEER_FLAG_NEXTHOP_LOCAL_UNCHANGED) ||
 	     CHECK_FLAG(flags2, PEER_FLAG_NEXTHOP_LOCAL_UNCHANGED)) &&
 	    !IPV6_ADDR_SAME(&pe1->nexthop.v6_global, &pe2->nexthop.v6_global))
+		return false;
+
+	if (afi == AFI_L2VPN && safi == SAFI_EVPN &&
+	    (pe1->afc[AFI_IP][SAFI_RTC] != pe2->afc[AFI_IP][SAFI_RTC]))
 		return false;
 
 	return true;
