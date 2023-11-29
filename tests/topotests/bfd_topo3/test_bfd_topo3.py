@@ -117,7 +117,7 @@ def test_wait_bgp_convergence():
             "show {} route json".format(iptype),
             {route: [{"protocol": proto}]},
         )
-        _, result = topotest.run_and_expect(test_func, None, count=130, wait=1)
+        _, result = topotest.run_and_expect(test_func, None, count=60, wait=1)
         assertmsg = '"{}" OSPF convergence failure'.format(router)
         assert result is None, assertmsg
 
@@ -189,7 +189,7 @@ def test_wait_bfd_convergence():
             "show bfd peers json",
             bfd_config,
         )
-        _, result = topotest.run_and_expect(test_func, None, count=130, wait=1)
+        _, result = topotest.run_and_expect(test_func, None, count=60, wait=1)
         assertmsg = '"{}" BFD configuration failure'.format(router)
         assert result is None, assertmsg
 
