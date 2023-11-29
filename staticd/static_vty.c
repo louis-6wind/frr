@@ -1035,10 +1035,14 @@ DEFPY_YANG(ipv6_route_address_interface, ipv6_route_address_interface_cmd,
 	   "The table number to configure\n" VRF_CMD_HELP_STR
 	   "Treat the nexthop as directly attached to the interface\n"
 	   "SR-TE color\n"
-	   "The SR-TE color to configure\n" BFD_INTEGRATION_STR
-		   BFD_INTEGRATION_MULTI_HOP_STR BFD_INTEGRATION_SOURCE_STR
-			   BFD_INTEGRATION_SOURCEV4_STR BFD_PROFILE_STR
-				   BFD_PROFILE_NAME_STR "Value of segs\n"
+	   "The SR-TE color to configure\n"
+	   BFD_INTEGRATION_STR
+	   BFD_INTEGRATION_MULTI_HOP_STR
+	   BFD_INTEGRATION_SOURCE_STR
+	   BFD_INTEGRATION_SOURCEV4_STR
+	   BFD_PROFILE_STR
+	   BFD_PROFILE_NAME_STR
+	   "Value of segs\n"
 	   "Segs (SIDs)\n")
 {
 	struct static_route_args args = {
@@ -1098,10 +1102,14 @@ DEFPY_YANG(ipv6_route_address_interface_vrf,
 	   "The table number to configure\n" VRF_CMD_HELP_STR
 	   "Treat the nexthop as directly attached to the interface\n"
 	   "SR-TE color\n"
-	   "The SR-TE color to configure\n" BFD_INTEGRATION_STR
-		   BFD_INTEGRATION_MULTI_HOP_STR BFD_INTEGRATION_SOURCE_STR
-			   BFD_INTEGRATION_SOURCEV4_STR BFD_PROFILE_STR
-				   BFD_PROFILE_NAME_STR "Value of segs\n"
+	   "The SR-TE color to configure\n"
+	   BFD_INTEGRATION_STR
+	   BFD_INTEGRATION_MULTI_HOP_STR
+	   BFD_INTEGRATION_SOURCE_STR
+	   BFD_INTEGRATION_SOURCEV4_STR
+	   BFD_PROFILE_STR
+	   BFD_PROFILE_NAME_STR
+	   "Value of segs\n"
 	   "Segs (SIDs)\n")
 {
 	struct static_route_args args = {
@@ -1141,7 +1149,7 @@ DEFPY_YANG(ipv6_route, ipv6_route_cmd,
 	    |table (1-4294967295)                          \
             |nexthop-vrf NAME                              \
             |color (1-4294967295)                          \
-	    |bfd$bfd [{multi-hop$bfd_multi_hop|source X:X::X:X$bfd_source|profile BFDPROF$bfd_profile}] \
+	    |bfd$bfd [{multi-hop$bfd_multi_hop|auto-hop$bfd_auto_hop|source X:X::X:X$bfd_source|profile BFDPROF$bfd_profile}] \
 			|segments WORD 								   \
           }]",
 	   NO_STR IPV6_STR
@@ -1157,10 +1165,14 @@ DEFPY_YANG(ipv6_route, ipv6_route_cmd,
 	   "Distance value for this prefix\n" VRF_CMD_HELP_STR MPLS_LABEL_HELPSTR
 	   "Table to configure\n"
 	   "The table number to configure\n" VRF_CMD_HELP_STR "SR-TE color\n"
-	   "The SR-TE color to configure\n" BFD_INTEGRATION_STR
-		   BFD_INTEGRATION_MULTI_HOP_STR BFD_INTEGRATION_SOURCE_STR
-			   BFD_INTEGRATION_SOURCEV4_STR BFD_PROFILE_STR
-				   BFD_PROFILE_NAME_STR "Value of segs\n"
+	   "The SR-TE color to configure\n"
+	   BFD_INTEGRATION_STR
+	   BFD_INTEGRATION_MULTI_HOP_STR
+	   BFD_INTEGRATION_SOURCE_STR
+	   BFD_INTEGRATION_SOURCEV4_STR
+	   BFD_PROFILE_STR
+	   BFD_PROFILE_NAME_STR
+	   "Value of segs\n"
 	   "Segs (SIDs)\n")
 {
 	struct static_route_args args = {
@@ -1214,11 +1226,17 @@ DEFPY_YANG(ipv6_route_vrf, ipv6_route_vrf_cmd,
 	   "Tag value\n"
 	   "Distance value for this prefix\n" MPLS_LABEL_HELPSTR
 	   "Table to configure\n"
-	   "The table number to configure\n" VRF_CMD_HELP_STR "SR-TE color\n"
-	   "The SR-TE color to configure\n" BFD_INTEGRATION_STR
-		   BFD_INTEGRATION_MULTI_HOP_STR BFD_INTEGRATION_SOURCE_STR
-			   BFD_INTEGRATION_SOURCEV4_STR BFD_PROFILE_STR
-				   BFD_PROFILE_NAME_STR "Value of segs\n"
+	   "The table number to configure\n"
+	   VRF_CMD_HELP_STR
+	   "SR-TE color\n"
+	   "The SR-TE color to configure\n"
+	   BFD_INTEGRATION_STR
+	   BFD_INTEGRATION_MULTI_HOP_STR
+	   BFD_INTEGRATION_SOURCE_STR
+	   BFD_INTEGRATION_SOURCEV4_STR
+	   BFD_PROFILE_STR
+	   BFD_PROFILE_NAME_STR
+	   "Value of segs\n"
 	   "Segs (SIDs)\n")
 {
 	struct static_route_args args = {
