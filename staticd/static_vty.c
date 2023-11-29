@@ -400,9 +400,12 @@ static int static_route_nb_run(struct vty *vty, struct static_route_args *args)
 			strlcat(xpath_bfd,
 				"/frr-staticd:bfd-monitoring/multi-hop",
 				sizeof(xpath_bfd));
-			nb_cli_enqueue_change(vty, xpath_bfd, NB_OP_MODIFY,
-					      args->bfd_multi_hop ? "true"
-								  : "false");
+			if (args->bfd_multi_hop)
+				nb_cli_enqueue_change(vty, xpath_bfd,
+						      NB_OP_MODIFY, "true");
+			else
+				nb_cli_enqueue_change(vty, xpath_bfd,
+						      NB_OP_DESTROY, NULL);
 
 			if (args->bfd_profile) {
 				strlcpy(xpath_bfd, xpath_nexthop,
@@ -1428,7 +1431,8 @@ static void nexthop_cli_show(struct vty *vty, const struct lyd_node *route,
 		const struct lyd_node *bfd_dnode =
 			yang_dnode_get(nexthop, "./bfd-monitoring");
 
-		if (yang_dnode_get_bool(bfd_dnode, "./multi-hop")) {
+		if (yang_dnode_exists(bfd_dnode, "./multi-hop") &&
+		    yang_dnode_get_bool(bfd_dnode, "./multi-hop")) {
 			vty_out(vty, " bfd multi-hop");
 
 			if (yang_dnode_exists(bfd_dnode, "./source"))

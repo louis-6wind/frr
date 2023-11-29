@@ -95,7 +95,8 @@ void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
 	use_profile = yang_dnode_exists(dnode, "./profile");
 	onlink = yang_dnode_exists(dnode, "../onlink") &&
 		 yang_dnode_get_bool(dnode, "../onlink");
-	mhop = yang_dnode_get_bool(dnode, "./multi-hop");
+	mhop = yang_dnode_exists(dnode, "./multi-hop") &&
+	       yang_dnode_get_bool(dnode, "./multi-hop");
 	vrf = vrf_lookup_by_name(yang_dnode_get_string(dnode, "../vrf"));
 
 	family = static_next_hop_type_to_family(sn);

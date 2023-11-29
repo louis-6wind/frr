@@ -266,7 +266,7 @@ module frr-bfdd {
       description
         "Use multi hop session instead of single hop.";
       type boolean;
-      default false;
+      status deprecated;
     }
 
     leaf profile {
