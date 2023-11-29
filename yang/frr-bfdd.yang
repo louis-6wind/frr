@@ -257,6 +257,9 @@ module frr-bfdd {
 
          When source is not set and multi-hop is `true` the source
          address will be automatic selected through Next Hop Tracking (NHT).";
+      must "../multi-hop = 'true'" {
+        error-message "source option is only valid with multi-hop";
+      }
     }
 
     leaf multi-hop {
