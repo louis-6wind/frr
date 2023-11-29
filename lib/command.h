@@ -503,6 +503,7 @@ struct cmd_node {
 /* BFD protocol integration strings. */
 #define BFD_INTEGRATION_STR "BFD monitoring\n"
 #define BFD_INTEGRATION_MULTI_HOP_STR "Use BFD multi hop session\n"
+#define BFD_INTEGRATION_AUTO_HOP_STR "Select automatically single-hop or multi-hop\n"
 #define BFD_INTEGRATION_SOURCE_STR "Use source for BFD session\n"
 #define BFD_INTEGRATION_SOURCEV4_STR "Use IPv4 source for BFD session\n"
 #define BFD_INTEGRATION_SOURCEV6_STR "Use IPv4 source for BFD session\n"
