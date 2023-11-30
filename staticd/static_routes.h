@@ -265,7 +265,8 @@ extern void static_next_hop_bfd_monitor_disable(struct static_nexthop *sn);
 extern void static_next_hop_bfd_profile(struct static_nexthop *sn,
 					const char *name);
 extern void static_next_hop_bfd_hop_type_set(struct static_nexthop *sn,
-					     enum static_bfd_hop_type hop_type);
+					     enum static_bfd_hop_type hop_type,
+					     bool install);
 
 /** Call this function after zebra client initialization. */
 extern void static_bfd_initialize(struct zclient *zc, struct event_loop *tm);

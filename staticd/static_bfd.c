@@ -143,10 +143,8 @@ void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
 	if (vrf && vrf->vrf_id != VRF_UNKNOWN)
 		bfd_sess_set_vrf(sn->bsp, vrf->vrf_id);
 
-	bfd_sess_set_hop_count(sn->bsp, (onlink ||
-					 hop_type == STATIC_BFD_HOP_TYPE_SINGLE)
-						? 1
-						: 254);
+
+	static_next_hop_bfd_hop_type_set(sn, hop_type, false);
 
 	/* Install or update the session. */
 	bfd_sess_install(sn->bsp);
@@ -196,7 +194,8 @@ void static_next_hop_bfd_auto_source(struct static_nexthop *sn)
 }
 
 void static_next_hop_bfd_hop_type_set(struct static_nexthop *sn,
-				      enum static_bfd_hop_type hop_type)
+				      enum static_bfd_hop_type hop_type,
+				      bool install)
 {
 	if (sn->bsp == NULL)
 		return;
@@ -209,7 +208,8 @@ void static_next_hop_bfd_hop_type_set(struct static_nexthop *sn,
 		bfd_sess_set_hop_count(sn->bsp, 254);
 		break;
 	}
-	bfd_sess_install(sn->bsp);
+	if (install)
+		bfd_sess_install(sn->bsp);
 }
 
 void static_next_hop_bfd_profile(struct static_nexthop *sn, const char *name)

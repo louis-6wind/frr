@@ -990,7 +990,8 @@ int route_next_hop_bfd_multi_hop_modify(struct nb_cb_modify_args *args)
 	static_next_hop_bfd_hop_type_set(sn,
 					 yang_dnode_get_bool(args->dnode, NULL)
 						 ? STATIC_BFD_HOP_TYPE_MULTI
-						 : STATIC_BFD_HOP_TYPE_SINGLE);
+						 : STATIC_BFD_HOP_TYPE_SINGLE,
+					 true);
 
 	return NB_OK;
 }
@@ -1007,7 +1008,7 @@ int route_next_hop_bfd_multi_hop_destroy(struct nb_cb_destroy_args *args)
 	hop_type = yang_dnode_exists(args->dnode, "../hop_type")
 			   ? yang_dnode_get_enum(args->dnode, "../hop_type")
 			   : STATIC_BFD_HOP_TYPE_SINGLE;
-	static_next_hop_bfd_hop_type_set(sn, hop_type);
+	static_next_hop_bfd_hop_type_set(sn, hop_type, true);
 
 	return NB_OK;
 }
@@ -1026,7 +1027,7 @@ int route_next_hop_bfd_hop_type_modify(struct nb_cb_modify_args *args)
 
 	sn = nb_running_get_entry(args->dnode, NULL, true);
 	hop_type = yang_dnode_get_enum(args->dnode, NULL);
-	static_next_hop_bfd_hop_type_set(sn, hop_type);
+	static_next_hop_bfd_hop_type_set(sn, hop_type, true);
 
 	return NB_OK;
 }
@@ -1045,7 +1046,7 @@ int route_next_hop_bfd_hop_type_destroy(struct nb_cb_destroy_args *args)
 						       "../multi-hop")
 			   ? STATIC_BFD_HOP_TYPE_MULTI
 			   : STATIC_BFD_HOP_TYPE_SINGLE;
-	static_next_hop_bfd_hop_type_set(sn, hop_type);
+	static_next_hop_bfd_hop_type_set(sn, hop_type, true);
 
 	return NB_OK;
 }
