@@ -396,13 +396,22 @@ static int static_route_nb_run(struct vty *vty, struct static_route_args *args)
 						      args->bfd_source);
 			}
 
+			/* unset the multi-hop deprecated leaf */
 			strlcpy(xpath_bfd, xpath_nexthop, sizeof(xpath_bfd));
 			strlcat(xpath_bfd,
 				"/frr-staticd:bfd-monitoring/multi-hop",
 				sizeof(xpath_bfd));
+			nb_cli_enqueue_change(vty, xpath_bfd, NB_OP_DESTROY,
+					      NULL);
+
+			/* set the the new hop-type leaf */
+			strlcpy(xpath_bfd, xpath_nexthop, sizeof(xpath_bfd));
+			strlcat(xpath_bfd,
+				"/frr-staticd:bfd-monitoring/hop-type",
+				sizeof(xpath_bfd));
 			if (args->bfd_multi_hop)
 				nb_cli_enqueue_change(vty, xpath_bfd,
-						      NB_OP_MODIFY, "true");
+						      NB_OP_MODIFY, "multi-hop");
 			else
 				nb_cli_enqueue_change(vty, xpath_bfd,
 						      NB_OP_DESTROY, NULL);
@@ -1431,8 +1440,11 @@ static void nexthop_cli_show(struct vty *vty, const struct lyd_node *route,
 		const struct lyd_node *bfd_dnode =
 			yang_dnode_get(nexthop, "./bfd-monitoring");
 
-		if (yang_dnode_exists(bfd_dnode, "./multi-hop") &&
-		    yang_dnode_get_bool(bfd_dnode, "./multi-hop")) {
+		if ((yang_dnode_exists(bfd_dnode, "./multi-hop") &&
+		     yang_dnode_get_bool(bfd_dnode, "./multi-hop")) ||
+		    (yang_dnode_exists(bfd_dnode, "./hop-type") &&
+		     yang_dnode_get_enum(bfd_dnode, "./hop-type") ==
+			     STATIC_BFD_HOP_TYPE_MULTI)) {
 			vty_out(vty, " bfd multi-hop");
 
 			if (yang_dnode_exists(bfd_dnode, "./source"))
