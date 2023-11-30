@@ -202,10 +202,16 @@ void static_next_hop_bfd_hop_type_set(struct static_nexthop *sn,
 
 	switch (hop_type) {
 	case STATIC_BFD_HOP_TYPE_SINGLE:
+		bfd_sess_set_bfd_auto_hop(sn->bsp, false);
 		bfd_sess_set_hop_count(sn->bsp, 1);
 		break;
 	case STATIC_BFD_HOP_TYPE_MULTI:
+		bfd_sess_set_bfd_auto_hop(sn->bsp, false);
 		bfd_sess_set_hop_count(sn->bsp, 254);
+		break;
+	case STATIC_BFD_HOP_TYPE_AUTO:
+		bfd_sess_set_bfd_auto_hop(sn->bsp, true);
+		static_zebra_nht_register(sn, false);
 		break;
 	}
 	if (install)

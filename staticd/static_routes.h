@@ -56,6 +56,7 @@ enum static_nh_type {
 enum static_bfd_hop_type {
 	STATIC_BFD_HOP_TYPE_SINGLE = 0,
 	STATIC_BFD_HOP_TYPE_MULTI = 1,
+	STATIC_BFD_HOP_TYPE_AUTO = 2,
 };
 
 /*

@@ -285,6 +285,10 @@ module frr-bfdd {
           value 1;
           description "Use multi hop session.";
         }
+        enum auto-hop {
+          value 2;
+          description "Automatically select single hop or multi hop.";
+        }
       }
       description
         "Determines the hop type for the BFD session.";

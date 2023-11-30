@@ -50,6 +50,8 @@ struct bfd_nht_cache {
 	struct prefix source;
 	/** Is the source address valid? */
 	bool source_valid;
+	/* directly connected */
+	bool connected;
 	/** BFD sessions using this. */
 	size_t refcount;
 
@@ -96,6 +98,9 @@ struct bfd_session_params {
 	bool auto_source;
 	/** Currently selected nht_cache. */
 	struct bfd_nht_cache *nht_cache;
+
+	/** Automatic hop selection. */
+	bool auto_hop;
 
 	/** Global BFD paramaters list. */
 	TAILQ_ENTRY(bfd_session_params) entry;
@@ -579,6 +584,12 @@ static bool bfd_sess_address_changed(const struct bfd_session_params *bsp,
 		return true;
 
 	return false;
+}
+
+
+void bfd_sess_set_bfd_auto_hop(struct bfd_session_params *bsp, bool enable)
+{
+	bsp->auto_hop = enable;
 }
 
 void bfd_sess_set_ipv4_addrs(struct bfd_session_params *bsp,
@@ -1219,6 +1230,23 @@ static void bfd_nht_cache_update_session(const struct bfd_nht_cache *nht_cache,
 {
 	const struct in_addr *address;
 	const struct in6_addr *address_v6;
+	bool auto_hop_changed;
+
+	if (session->auto_hop) {
+		if (nht_cache->connected && session->args.mhop) {
+			bfd_sess_set_hop_count(session, 1);
+			auto_hop_changed = true;
+		} else if (!nht_cache->connected && !session->args.mhop) {
+			bfd_sess_set_hop_count(session, 254);
+			auto_hop_changed = true;
+		}
+	}
+
+	if (!nht_cache->source_valid) {
+		if (auto_hop_changed)
+			bfd_sess_install(session);
+		return;
+	}
 
 	switch (session->args.family) {
 	case AF_INET:
@@ -1252,9 +1280,6 @@ static void bfd_nht_cache_update_sessions(const struct bfd_nht_cache *nht_cache)
 {
 	struct bfd_session_params *session;
 
-	if (!nht_cache->source_valid)
-		return;
-
 	TAILQ_FOREACH (session, &bsglobal.bsplist, entry) {
 		if (!session->auto_source)
 			continue;
@@ -1274,6 +1299,7 @@ static bool bfd_nht_cache_update(struct bfd_nht_cache *nht_cache,
 				 const struct zapi_route *route)
 {
 	size_t nh_index;
+	bool changed = false;
 
 	for (nh_index = 0; nh_index < route->nexthop_num; nh_index++) {
 		const struct zapi_nexthop *nh = &route->nexthops[nh_index];
@@ -1287,12 +1313,22 @@ static bool bfd_nht_cache_update(struct bfd_nht_cache *nht_cache,
 			continue;
 		}
 
+		if (route->type == ZEBRA_ROUTE_CONNECT) {
+			if (!nht_cache->connected)
+				changed = true;
+			nht_cache->connected = true;
+		} else {
+			if (nht_cache->connected)
+				changed = true;
+			nht_cache->connected = false;
+		}
+
 		frr_each (if_connected_const, interface->connected, connected) {
 			if (nht_cache->address.family !=
 			    connected->address->family)
 				continue;
 			if (prefix_same(connected->address, &nht_cache->source))
-				return false;
+				return changed;
 			/*
 			 * Skip link-local as it is only useful for single hop
 			 * and in that case no nht_cache is specified usually.

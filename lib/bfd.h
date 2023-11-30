@@ -113,6 +113,18 @@ void bfd_sess_set_ipv4_addrs(struct bfd_session_params *bsp,
 			     const struct in_addr *dst);
 
 /**
+ * Set the bfd session type mode to autohop
+ *
+ * NOTE:
+ * The next-hop tracking has to be called and update the bfd
+ * session type in the daemon code, if the auto flag is set
+ *
+ * \param bsp BFD session parameters.
+ * \param enable turn on or off the bfd mode automatically
+ */
+void bfd_sess_set_bfd_auto_hop(struct bfd_session_params *bsp, bool enable);
+
+/**
  * Set the local and peer address of the BFD session.
  *
  * NOTE:
