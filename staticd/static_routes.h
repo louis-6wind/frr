@@ -53,6 +53,11 @@ enum static_nh_type {
 	STATIC_BLACKHOLE,
 };
 
+enum static_bfd_hop_type {
+	STATIC_BFD_HOP_TYPE_SINGLE = 0,
+	STATIC_BFD_HOP_TYPE_MULTI = 1,
+};
+
 /*
  * Route Creation gives us:
  *  START -> Initial State, only exit is when we send the route to
@@ -259,7 +264,8 @@ extern void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
 extern void static_next_hop_bfd_monitor_disable(struct static_nexthop *sn);
 extern void static_next_hop_bfd_profile(struct static_nexthop *sn,
 					const char *name);
-extern void static_next_hop_bfd_multi_hop(struct static_nexthop *sn, bool mhop);
+extern void static_next_hop_bfd_hop_type_set(struct static_nexthop *sn,
+					     enum static_bfd_hop_type hop_type);
 
 /** Call this function after zebra client initialization. */
 extern void static_bfd_initialize(struct zclient *zc, struct event_loop *tm);

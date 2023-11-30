@@ -257,7 +257,7 @@ module frr-bfdd {
 
          When source is not set and multi-hop is `true` the source
          address will be automatic selected through Next Hop Tracking (NHT).";
-      must "../multi-hop = 'true'" {
+      must "../multi-hop = 'true' or ../hop-type = 'multi-hop'" {
         error-message "source option is only valid with multi-hop";
       }
     }
@@ -267,6 +267,27 @@ module frr-bfdd {
         "Use multi hop session instead of single hop.";
       type boolean;
       status deprecated;
+      must "not(../hop-type)" {
+        error-message
+          "multi-hop is deprecated in favor of hop-type.
+           multi-hop and hop-type cannot be both set.
+          ";
+      }
+    }
+
+    leaf hop-type {
+      type enumeration {
+        enum single-hop {
+          value 0;
+          description "Use single hop session.";
+        }
+        enum multi-hop {
+          value 1;
+          description "Use multi hop session.";
+        }
+      }
+      description
+        "Determines the hop type for the BFD session.";
     }
 
     leaf profile {

@@ -987,21 +987,65 @@ int route_next_hop_bfd_multi_hop_modify(struct nb_cb_modify_args *args)
 		return NB_OK;
 
 	sn = nb_running_get_entry(args->dnode, NULL, true);
-	static_next_hop_bfd_multi_hop(sn,
-				      yang_dnode_get_bool(args->dnode, NULL));
+	static_next_hop_bfd_hop_type_set(sn,
+					 yang_dnode_get_bool(args->dnode, NULL)
+						 ? STATIC_BFD_HOP_TYPE_MULTI
+						 : STATIC_BFD_HOP_TYPE_SINGLE);
 
 	return NB_OK;
 }
 
 int route_next_hop_bfd_multi_hop_destroy(struct nb_cb_destroy_args *args)
 {
+	enum static_bfd_hop_type hop_type;
 	struct static_nexthop *sn;
 
 	if (args->event != NB_EV_APPLY)
 		return NB_OK;
 
 	sn = nb_running_get_entry(args->dnode, NULL, true);
-	static_next_hop_bfd_multi_hop(sn, false);
+	hop_type = yang_dnode_exists(args->dnode, "../hop_type")
+			   ? yang_dnode_get_enum(args->dnode, "../hop_type")
+			   : STATIC_BFD_HOP_TYPE_SINGLE;
+	static_next_hop_bfd_hop_type_set(sn, hop_type);
+
+	return NB_OK;
+}
+
+/*
+ * XPath:
+ * /frr-routing:routing/control-plane-protocols/control-plane-protocol/frr-staticd:staticd/route-list/path-list/frr-nexthops/nexthop/bfd-monitoring/hop_type
+ */
+int route_next_hop_bfd_hop_type_modify(struct nb_cb_modify_args *args)
+{
+	enum static_bfd_hop_type hop_type;
+	struct static_nexthop *sn;
+
+	if (args->event != NB_EV_APPLY)
+		return NB_OK;
+
+	sn = nb_running_get_entry(args->dnode, NULL, true);
+	hop_type = yang_dnode_get_enum(args->dnode, NULL);
+	static_next_hop_bfd_hop_type_set(sn, hop_type);
+
+	return NB_OK;
+}
+
+int route_next_hop_bfd_hop_type_destroy(struct nb_cb_destroy_args *args)
+{
+	enum static_bfd_hop_type hop_type;
+	struct static_nexthop *sn;
+
+	if (args->event != NB_EV_APPLY)
+		return NB_OK;
+
+	sn = nb_running_get_entry(args->dnode, NULL, true);
+	hop_type = yang_dnode_exists(args->dnode, "../multi-hop") &&
+				   yang_dnode_get_bool(args->dnode,
+						       "../multi-hop")
+			   ? STATIC_BFD_HOP_TYPE_MULTI
+			   : STATIC_BFD_HOP_TYPE_SINGLE;
+	static_next_hop_bfd_hop_type_set(sn, hop_type);
 
 	return NB_OK;
 }

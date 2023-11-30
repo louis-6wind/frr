@@ -85,7 +85,8 @@ void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
 	bool use_profile;
 	bool use_source;
 	bool onlink;
-	bool mhop;
+	bool multi_hop_cfg;
+	enum static_bfd_hop_type hop_type_cfg, hop_type;
 	int family;
 	struct ipaddr source;
 	struct vrf *vrf = NULL;
@@ -95,8 +96,12 @@ void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
 	use_profile = yang_dnode_exists(dnode, "./profile");
 	onlink = yang_dnode_exists(dnode, "../onlink") &&
 		 yang_dnode_get_bool(dnode, "../onlink");
-	mhop = yang_dnode_exists(dnode, "./multi-hop") &&
-	       yang_dnode_get_bool(dnode, "./multi-hop");
+	multi_hop_cfg = yang_dnode_exists(dnode, "./multi-hop") &&
+			yang_dnode_get_bool(dnode, "./multi-hop");
+	hop_type_cfg = yang_dnode_exists(dnode, "./hop-type")
+			       ? yang_dnode_get_enum(dnode, "./hop-type")
+			       : STATIC_BFD_HOP_TYPE_SINGLE;
+	hop_type = multi_hop_cfg ? STATIC_BFD_HOP_TYPE_MULTI : hop_type_cfg;
 	vrf = vrf_lookup_by_name(yang_dnode_get_string(dnode, "../vrf"));
 
 	family = static_next_hop_type_to_family(sn);
@@ -115,7 +120,7 @@ void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
 	if (use_source)
 		yang_dnode_get_ip(&source, dnode, "./source");
 
-	if (onlink || mhop == false)
+	if (onlink || hop_type == STATIC_BFD_HOP_TYPE_SINGLE)
 		bfd_sess_set_auto_source(sn->bsp, false);
 	else
 		bfd_sess_set_auto_source(sn->bsp, !use_source);
@@ -138,7 +143,10 @@ void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
 	if (vrf && vrf->vrf_id != VRF_UNKNOWN)
 		bfd_sess_set_vrf(sn->bsp, vrf->vrf_id);
 
-	bfd_sess_set_hop_count(sn->bsp, (onlink || mhop == false) ? 1 : 254);
+	bfd_sess_set_hop_count(sn->bsp, (onlink ||
+					 hop_type == STATIC_BFD_HOP_TYPE_SINGLE)
+						? 1
+						: 254);
 
 	/* Install or update the session. */
 	bfd_sess_install(sn->bsp);
@@ -187,12 +195,20 @@ void static_next_hop_bfd_auto_source(struct static_nexthop *sn)
 	bfd_sess_install(sn->bsp);
 }
 
-void static_next_hop_bfd_multi_hop(struct static_nexthop *sn, bool mhop)
+void static_next_hop_bfd_hop_type_set(struct static_nexthop *sn,
+				      enum static_bfd_hop_type hop_type)
 {
 	if (sn->bsp == NULL)
 		return;
 
-	bfd_sess_set_hop_count(sn->bsp, mhop ? 254 : 1);
+	switch (hop_type) {
+	case STATIC_BFD_HOP_TYPE_SINGLE:
+		bfd_sess_set_hop_count(sn->bsp, 1);
+		break;
+	case STATIC_BFD_HOP_TYPE_MULTI:
+		bfd_sess_set_hop_count(sn->bsp, 254);
+		break;
+	}
 	bfd_sess_install(sn->bsp);
 }
 
