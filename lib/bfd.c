@@ -20,7 +20,7 @@
 #include "bfd.h"
 
 DEFINE_MTYPE_STATIC(LIB, BFD_INFO, "BFD info");
-DEFINE_MTYPE_STATIC(LIB, BFD_SOURCE, "BFD source cache");
+DEFINE_MTYPE_STATIC(LIB, BFD_NHT_CACHE, "BFD NHT cache");
 
 /**
  * BFD protocol integration configuration.
@@ -35,13 +35,13 @@ enum bfd_session_event {
 };
 
 /**
- * BFD source selection result cache.
+ * BFD NHT selection result cache.
  *
  * This structure will keep track of the result based on the destination
  * prefix. When the result changes all related BFD sessions with automatic
  * source will be updated.
  */
-struct bfd_source_cache {
+struct bfd_nht_cache {
 	/** Address VRF belongs. */
 	vrf_id_t vrf_id;
 	/** Destination network address. */
@@ -49,13 +49,13 @@ struct bfd_source_cache {
 	/** Source selected. */
 	struct prefix source;
 	/** Is the source address valid? */
-	bool valid;
+	bool source_valid;
 	/** BFD sessions using this. */
 	size_t refcount;
 
-	SLIST_ENTRY(bfd_source_cache) entry;
+	SLIST_ENTRY(bfd_nht_cache) entry;
 };
-SLIST_HEAD(bfd_source_list, bfd_source_cache);
+SLIST_HEAD(bfd_nht_cache_list, bfd_nht_cache);
 
 /**
  * Data structure to do the necessary tricks to hide the BFD protocol
@@ -94,8 +94,8 @@ struct bfd_session_params {
 
 	/** Automatic source selection. */
 	bool auto_source;
-	/** Currently selected source. */
-	struct bfd_source_cache *source_cache;
+	/** Currently selected nht_cache. */
+	struct bfd_nht_cache *nht_cache;
 
 	/** Global BFD paramaters list. */
 	TAILQ_ENTRY(bfd_session_params) entry;
@@ -107,8 +107,8 @@ struct bfd_sessions_global {
 	 * without code duplication among daemons.
 	 */
 	TAILQ_HEAD(bsplist, bfd_session_params) bsplist;
-	/** BFD automatic source selection cache. */
-	struct bfd_source_list source_list;
+	/** BFD nht cache list. */
+	struct bfd_nht_cache_list nht_cache_list;
 
 	/** Pointer to FRR's event manager. */
 	struct event_loop *tm;
@@ -131,8 +131,8 @@ static const struct in6_addr i6a_zero;
  * Prototypes
  */
 
-static void bfd_source_cache_get(struct bfd_session_params *session);
-static void bfd_source_cache_put(struct bfd_session_params *session);
+static void bfd_nht_cache_get(struct bfd_session_params *session);
+static void bfd_nht_cache_put(struct bfd_session_params *session);
 
 /*
  * bfd_get_peer_info - Extract the Peer information for which the BFD session
@@ -555,7 +555,7 @@ void bfd_sess_free(struct bfd_session_params **bsp)
 	/* Remove from global list. */
 	TAILQ_REMOVE(&bsglobal.bsplist, (*bsp), entry);
 
-	bfd_source_cache_put(*bsp);
+	bfd_nht_cache_put(*bsp);
 
 	/* Free the memory and point to NULL. */
 	XFREE(MTYPE_BFD_INFO, (*bsp));
@@ -592,7 +592,7 @@ void bfd_sess_set_ipv4_addrs(struct bfd_session_params *bsp,
 	/* If already installed, remove the old setting. */
 	_bfd_sess_remove(bsp);
 	/* Address changed so we must reapply auto source. */
-	bfd_source_cache_put(bsp);
+	bfd_nht_cache_put(bsp);
 
 	bsp->args.family = AF_INET;
 
@@ -608,7 +608,7 @@ void bfd_sess_set_ipv4_addrs(struct bfd_session_params *bsp,
 	memcpy(&bsp->args.dst, dst, sizeof(struct in_addr));
 
 	if (bsp->auto_source)
-		bfd_source_cache_get(bsp);
+		bfd_nht_cache_get(bsp);
 }
 
 void bfd_sess_set_ipv6_addrs(struct bfd_session_params *bsp,
@@ -621,7 +621,7 @@ void bfd_sess_set_ipv6_addrs(struct bfd_session_params *bsp,
 	/* If already installed, remove the old setting. */
 	_bfd_sess_remove(bsp);
 	/* Address changed so we must reapply auto source. */
-	bfd_source_cache_put(bsp);
+	bfd_nht_cache_put(bsp);
 
 	bsp->args.family = AF_INET6;
 
@@ -635,7 +635,7 @@ void bfd_sess_set_ipv6_addrs(struct bfd_session_params *bsp,
 	bsp->args.dst = *dst;
 
 	if (bsp->auto_source)
-		bfd_source_cache_get(bsp);
+		bfd_nht_cache_get(bsp);
 }
 
 void bfd_sess_set_interface(struct bfd_session_params *bsp, const char *ifname)
@@ -683,12 +683,12 @@ void bfd_sess_set_vrf(struct bfd_session_params *bsp, vrf_id_t vrf_id)
 	/* If already installed, remove the old setting. */
 	_bfd_sess_remove(bsp);
 	/* Address changed so we must reapply auto source. */
-	bfd_source_cache_put(bsp);
+	bfd_nht_cache_put(bsp);
 
 	bsp->args.vrf_id = vrf_id;
 
 	if (bsp->auto_source)
-		bfd_source_cache_get(bsp);
+		bfd_nht_cache_get(bsp);
 }
 
 void bfd_sess_set_hop_count(struct bfd_session_params *bsp, uint8_t hops)
@@ -725,9 +725,9 @@ void bfd_sess_set_auto_source(struct bfd_session_params *bsp, bool enable)
 
 	bsp->auto_source = enable;
 	if (enable)
-		bfd_source_cache_get(bsp);
+		bfd_nht_cache_get(bsp);
 	else
-		bfd_source_cache_put(bsp);
+		bfd_nht_cache_put(bsp);
 }
 
 void bfd_sess_install(struct bfd_session_params *bsp)
@@ -1030,11 +1030,11 @@ static int bfd_protocol_integration_finish(void)
 	}
 
 	/*
-	 * BFD source cache is linked to sessions, if all sessions are gone
-	 * then the source cache must be empty.
+	 * BFD nht cache is linked to sessions, if all sessions are gone
+	 * then the nht cache must be empty.
 	 */
-	if (!SLIST_EMPTY(&bsglobal.source_list))
-		zlog_warn("BFD integration source cache not empty");
+	if (!SLIST_EMPTY(&bsglobal.nht_cache_list))
+		zlog_warn("BFD integration nht_cache cache not empty");
 
 	return 0;
 }
@@ -1043,7 +1043,7 @@ void bfd_protocol_integration_init(struct zclient *zc, struct event_loop *tm)
 {
 	/* Initialize data structure. */
 	TAILQ_INIT(&bsglobal.bsplist);
-	SLIST_INIT(&bsglobal.source_list);
+	SLIST_INIT(&bsglobal.nht_cache_list);
 
 	/* Copy pointers. */
 	bsglobal.zc = zc;
@@ -1105,27 +1105,26 @@ bool bfd_protocol_integration_shutting_down(void)
  * | source address  |
  * +-----------------+
  */
-static bool
-bfd_source_cache_session_match(const struct bfd_source_cache *source,
-			       const struct bfd_session_params *session)
+static bool bfd_nht_cache_session_match(const struct bfd_nht_cache *nht_cache,
+					const struct bfd_session_params *session)
 {
 	const struct in_addr *address;
 	const struct in6_addr *address_v6;
 
-	if (session->args.vrf_id != source->vrf_id)
+	if (session->args.vrf_id != nht_cache->vrf_id)
 		return false;
-	if (session->args.family != source->address.family)
+	if (session->args.family != nht_cache->address.family)
 		return false;
 
 	switch (session->args.family) {
 	case AF_INET:
 		address = (const struct in_addr *)&session->args.dst;
-		if (address->s_addr != source->address.u.prefix4.s_addr)
+		if (address->s_addr != nht_cache->address.u.prefix4.s_addr)
 			return false;
 		break;
 	case AF_INET6:
 		address_v6 = &session->args.dst;
-		if (memcmp(address_v6, &source->address.u.prefix6,
+		if (memcmp(address_v6, &nht_cache->address.u.prefix6,
 			   sizeof(struct in6_addr)))
 			return false;
 		break;
@@ -1136,26 +1135,26 @@ bfd_source_cache_session_match(const struct bfd_source_cache *source,
 	return true;
 }
 
-static struct bfd_source_cache *
-bfd_source_cache_find(vrf_id_t vrf_id, const struct prefix *prefix)
+static struct bfd_nht_cache *bfd_nht_cache_find(vrf_id_t vrf_id,
+						const struct prefix *prefix)
 {
-	struct bfd_source_cache *source;
+	struct bfd_nht_cache *nht_cache;
 
-	SLIST_FOREACH (source, &bsglobal.source_list, entry) {
-		if (source->vrf_id != vrf_id)
+	SLIST_FOREACH (nht_cache, &bsglobal.nht_cache_list, entry) {
+		if (nht_cache->vrf_id != vrf_id)
 			continue;
-		if (!prefix_same(&source->address, prefix))
+		if (!prefix_same(&nht_cache->address, prefix))
 			continue;
 
-		return source;
+		return nht_cache;
 	}
 
 	return NULL;
 }
 
-static void bfd_source_cache_get(struct bfd_session_params *session)
+static void bfd_nht_cache_get(struct bfd_session_params *session)
 {
-	struct bfd_source_cache *source;
+	struct bfd_nht_cache *nht_cache;
 	struct prefix target = {};
 
 	switch (session->args.family) {
@@ -1175,49 +1174,48 @@ static void bfd_source_cache_get(struct bfd_session_params *session)
 		return;
 	}
 
-	source = bfd_source_cache_find(session->args.vrf_id, &target);
-	if (source) {
-		if (session->source_cache == source)
+	nht_cache = bfd_nht_cache_find(session->args.vrf_id, &target);
+	if (nht_cache) {
+		if (session->nht_cache == nht_cache)
 			return;
 
-		bfd_source_cache_put(session);
-		session->source_cache = source;
-		source->refcount++;
+		bfd_nht_cache_put(session);
+		session->nht_cache = nht_cache;
+		nht_cache->refcount++;
 		return;
 	}
 
-	source = XCALLOC(MTYPE_BFD_SOURCE, sizeof(*source));
-	prefix_copy(&source->address, &target);
-	source->vrf_id = session->args.vrf_id;
-	SLIST_INSERT_HEAD(&bsglobal.source_list, source, entry);
+	nht_cache = XCALLOC(MTYPE_BFD_NHT_CACHE, sizeof(*nht_cache));
+	prefix_copy(&nht_cache->address, &target);
+	nht_cache->vrf_id = session->args.vrf_id;
+	SLIST_INSERT_HEAD(&bsglobal.nht_cache_list, nht_cache, entry);
 
-	bfd_source_cache_put(session);
-	session->source_cache = source;
-	source->refcount = 1;
+	bfd_nht_cache_put(session);
+	session->nht_cache = nht_cache;
+	nht_cache->refcount = 1;
 
 	return;
 }
 
-static void bfd_source_cache_put(struct bfd_session_params *session)
+static void bfd_nht_cache_put(struct bfd_session_params *session)
 {
-	if (session->source_cache == NULL)
+	if (session->nht_cache == NULL)
 		return;
 
-	session->source_cache->refcount--;
-	if (session->source_cache->refcount > 0) {
-		session->source_cache = NULL;
+	session->nht_cache->refcount--;
+	if (session->nht_cache->refcount > 0) {
+		session->nht_cache = NULL;
 		return;
 	}
 
-	SLIST_REMOVE(&bsglobal.source_list, session->source_cache,
-		     bfd_source_cache, entry);
-	XFREE(MTYPE_BFD_SOURCE, session->source_cache);
+	SLIST_REMOVE(&bsglobal.nht_cache_list, session->nht_cache,
+		     bfd_nht_cache, entry);
+	XFREE(MTYPE_BFD_NHT_CACHE, session->nht_cache);
 }
 
-/** Updates BFD running session if source address has changed. */
-static void
-bfd_source_cache_update_session(const struct bfd_source_cache *source,
-				struct bfd_session_params *session)
+/** Updates BFD running session if nht_cache address has changed. */
+static void bfd_nht_cache_update_session(const struct bfd_nht_cache *nht_cache,
+					 struct bfd_session_params *session)
 {
 	const struct in_addr *address;
 	const struct in6_addr *address_v6;
@@ -1225,22 +1223,22 @@ bfd_source_cache_update_session(const struct bfd_source_cache *source,
 	switch (session->args.family) {
 	case AF_INET:
 		address = (const struct in_addr *)&session->args.src;
-		if (memcmp(address, &source->source.u.prefix4,
+		if (memcmp(address, &nht_cache->source.u.prefix4,
 			   sizeof(struct in_addr)) == 0)
 			return;
 
 		_bfd_sess_remove(session);
-		memcpy(&session->args.src, &source->source.u.prefix4,
+		memcpy(&session->args.src, &nht_cache->source.u.prefix4,
 		       sizeof(struct in_addr));
 		break;
 	case AF_INET6:
 		address_v6 = &session->args.src;
-		if (memcmp(address_v6, &source->source.u.prefix6,
+		if (memcmp(address_v6, &nht_cache->source.u.prefix6,
 			   sizeof(struct in6_addr)) == 0)
 			return;
 
 		_bfd_sess_remove(session);
-		memcpy(&session->args.src, &source->source.u.prefix6,
+		memcpy(&session->args.src, &nht_cache->source.u.prefix6,
 		       sizeof(struct in6_addr));
 		break;
 	default:
@@ -1250,31 +1248,30 @@ bfd_source_cache_update_session(const struct bfd_source_cache *source,
 	bfd_sess_install(session);
 }
 
-static void
-bfd_source_cache_update_sessions(const struct bfd_source_cache *source)
+static void bfd_nht_cache_update_sessions(const struct bfd_nht_cache *nht_cache)
 {
 	struct bfd_session_params *session;
 
-	if (!source->valid)
+	if (!nht_cache->source_valid)
 		return;
 
 	TAILQ_FOREACH (session, &bsglobal.bsplist, entry) {
 		if (!session->auto_source)
 			continue;
-		if (!bfd_source_cache_session_match(source, session))
+		if (!bfd_nht_cache_session_match(nht_cache, session))
 			continue;
 
-		bfd_source_cache_update_session(source, session);
+		bfd_nht_cache_update_session(nht_cache, session);
 	}
 }
 
 /**
- * Try to translate next hop information into source address.
+ * Try to translate next hop information into nht_cache address.
  *
- * \returns `true` if source changed otherwise `false`.
+ * \returns `true` if nht_cache changed otherwise `false`.
  */
-static bool bfd_source_cache_update(struct bfd_source_cache *source,
-				    const struct zapi_route *route)
+static bool bfd_nht_cache_update(struct bfd_nht_cache *nht_cache,
+				 const struct zapi_route *route)
 {
 	size_t nh_index;
 
@@ -1291,45 +1288,44 @@ static bool bfd_source_cache_update(struct bfd_source_cache *source,
 		}
 
 		frr_each (if_connected_const, interface->connected, connected) {
-			if (source->address.family !=
+			if (nht_cache->address.family !=
 			    connected->address->family)
 				continue;
-			if (prefix_same(connected->address, &source->source))
+			if (prefix_same(connected->address, &nht_cache->source))
 				return false;
 			/*
 			 * Skip link-local as it is only useful for single hop
-			 * and in that case no source is specified usually.
+			 * and in that case no nht_cache is specified usually.
 			 */
-			if (source->address.family == AF_INET6 &&
-			    IN6_IS_ADDR_LINKLOCAL(
-				    &connected->address->u.prefix6))
+			if (nht_cache->address.family == AF_INET6 &&
+			    IN6_IS_ADDR_LINKLOCAL(&connected->address->u.prefix6))
 				continue;
 
-			prefix_copy(&source->source, connected->address);
-			source->valid = true;
+			prefix_copy(&nht_cache->source, connected->address);
+			nht_cache->source_valid = true;
 			return true;
 		}
 	}
 
-	memset(&source->source, 0, sizeof(source->source));
-	source->valid = false;
+	memset(&nht_cache->source, 0, sizeof(nht_cache->source));
+	nht_cache->source_valid = false;
 	return false;
 }
 
 int bfd_nht_update(const struct prefix *match, const struct zapi_route *route)
 {
-	struct bfd_source_cache *source;
+	struct bfd_nht_cache *nht_cache;
 
 	if (bsglobal.debugging)
 		zlog_debug("BFD NHT update for %pFX", &route->prefix);
 
-	SLIST_FOREACH (source, &bsglobal.source_list, entry) {
-		if (source->vrf_id != route->vrf_id)
+	SLIST_FOREACH (nht_cache, &bsglobal.nht_cache_list, entry) {
+		if (nht_cache->vrf_id != route->vrf_id)
 			continue;
-		if (!prefix_same(match, &source->address))
+		if (!prefix_same(match, &nht_cache->address))
 			continue;
-		if (bfd_source_cache_update(source, route))
-			bfd_source_cache_update_sessions(source);
+		if (bfd_nht_cache_update(nht_cache, route))
+			bfd_nht_cache_update_sessions(nht_cache);
 	}
 
 	return 0;
