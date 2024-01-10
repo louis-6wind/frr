@@ -12,7 +12,7 @@
 #include <fcntl.h>
 
 #if ISIS_METHOD == ISIS_METHOD_BPF
-#include <net/if.h>
+#include <net/if_arp.h>
 #include <netinet/if_ether.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>

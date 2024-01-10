@@ -6,7 +6,6 @@
 #ifndef ZEBRA_PW_H_
 #define ZEBRA_PW_H_
 
-#include <net/if.h>
 #include <netinet/in.h>
 
 #include "lib/hook.h"

@@ -22,6 +22,7 @@
 #include <linux/if_packet.h>
 #endif /* BFD_LINUX */
 
+#include <net/if_arp.h>
 #include <netinet/if_ether.h>
 #include <netinet/udp.h>
 

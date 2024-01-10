@@ -10,6 +10,7 @@
 #ifdef GNU_LINUX
 #include <net/ethernet.h>
 #else
+#include <net/if_arp.h>
 #include <netinet/if_ether.h>
 #endif
 

@@ -73,8 +73,6 @@
 #include <net/netopt.h>
 #endif /* HAVE_NET_NETOPT_H */
 
-#include <net/if.h>
-
 #ifdef HAVE_NET_IF_DL_H
 #include <net/if_dl.h>
 #endif /* HAVE_NET_IF_DL_H */

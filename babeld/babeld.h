@@ -38,7 +38,6 @@ Copyright 2011 by Matthieu Boutier and Juliusz Chroboczek
 
 #ifndef IF_NAMESIZE
 #include <sys/socket.h>
-#include <net/if.h>
 #endif
 
 #ifdef HAVE_VALGRIND

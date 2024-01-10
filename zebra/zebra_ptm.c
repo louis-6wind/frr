@@ -6,7 +6,6 @@
 #include <zebra.h>
 
 #include <sys/un.h> /* for sockaddr_un */
-#include <net/if.h>
 
 #include "bfd.h"
 #include "buffer.h"

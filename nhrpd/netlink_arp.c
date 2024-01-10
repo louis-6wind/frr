@@ -12,7 +12,6 @@
 #endif
 
 #include <fcntl.h>
-#include <net/if.h>
 #include <netinet/if_ether.h>
 #include <linux/netlink.h>
 #include <linux/neighbour.h>
