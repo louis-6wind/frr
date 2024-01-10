@@ -654,7 +654,11 @@ static void if_set_name(struct interface *ifp, const char *name)
 /* Does interface up ? */
 int if_is_up(const struct interface *ifp)
 {
-	return ifp->flags & IFF_UP;
+	return ((ifp->flags & IFF_UP)
+#ifdef IFF_LOWER_UP
+		&& (ifp->flags & IFF_LOWER_UP)
+#endif /* IFF_LOWER_UP */
+	);
 }
 
 /* Is interface running? */
@@ -668,11 +672,14 @@ int if_is_running(const struct interface *ifp)
    if ptm checking is enabled, then ptm check has passed */
 int if_is_operative(const struct interface *ifp)
 {
-	return ((ifp->flags & IFF_UP)
-		&& (((ifp->flags & IFF_RUNNING)
-		     && (ifp->ptm_status || !ifp->ptm_enable))
-		    || !CHECK_FLAG(ifp->status,
-				   ZEBRA_INTERFACE_LINKDETECTION)));
+	return (((ifp->flags & IFF_UP)
+#ifdef IFF_LOWER_UP
+		 && (ifp->flags & IFF_LOWER_UP)
+#endif /* IFF_LOWER_UP */
+			 ) &&
+		(((ifp->flags & IFF_RUNNING) &&
+		  (ifp->ptm_status || !ifp->ptm_enable)) ||
+		 !CHECK_FLAG(ifp->status, ZEBRA_INTERFACE_LINKDETECTION)));
 }
 
 /* Is the interface operative, eg. either UP & RUNNING
@@ -680,9 +687,11 @@ int if_is_operative(const struct interface *ifp)
 int if_is_no_ptm_operative(const struct interface *ifp)
 {
 	return ((ifp->flags & IFF_UP)
-		&& ((ifp->flags & IFF_RUNNING)
-		    || !CHECK_FLAG(ifp->status,
-				   ZEBRA_INTERFACE_LINKDETECTION)));
+#ifdef IFF_LOWER_UP
+		&& (ifp->flags & IFF_LOWER_UP)
+#endif /* IFF_LOWER_UP */
+		&& ((ifp->flags & IFF_RUNNING) ||
+		    !CHECK_FLAG(ifp->status, ZEBRA_INTERFACE_LINKDETECTION)));
 }
 
 /* Is this loopback interface ? */
@@ -744,6 +753,9 @@ const char *if_flag_dump(unsigned long flag)
 
 	strlcpy(logbuf, "<", BUFSIZ);
 	IFF_OUT_LOG(IFF_UP, "UP");
+#ifdef IFF_LOWER_UP
+	IFF_OUT_LOG(IFF_LOWER_UP, "LOWER_UP");
+#endif /* IFF_LOWER_UP */
 	IFF_OUT_LOG(IFF_BROADCAST, "BROADCAST");
 	IFF_OUT_LOG(IFF_DEBUG, "DEBUG");
 	IFF_OUT_LOG(IFF_LOOPBACK, "LOOPBACK");
