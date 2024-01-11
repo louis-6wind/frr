@@ -314,6 +314,8 @@ extern int if_ipv6_address_install(struct interface *ifp, struct prefix *prefix,
 extern int if_ip_address_uinstall(struct interface *ifp, struct prefix *prefix);
 extern int if_shutdown(struct interface *ifp);
 extern int if_no_shutdown(struct interface *ifp);
+extern int if_arp_set(struct interface *ifp);
+extern int if_arp_unset(struct interface *ifp);
 extern int if_multicast_set(struct interface *ifp);
 extern int if_multicast_unset(struct interface *ifp);
 extern int if_linkdetect(struct interface *ifp, bool detect);

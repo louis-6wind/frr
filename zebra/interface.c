@@ -3667,6 +3667,36 @@ DEFUN (show_interface_desc_vrf_all,
 	return CMD_SUCCESS;
 }
 
+int if_arp_set(struct interface *ifp)
+{
+	if (!CHECK_FLAG(ifp->status, ZEBRA_INTERFACE_ACTIVE))
+		return 0;
+
+	if (if_unset_flags(ifp, IFF_NOARP) < 0) {
+		zlog_debug("Can't unset noarp flag on interface %s", ifp->name);
+		return -1;
+	}
+
+	if_refresh(ifp);
+
+	return 0;
+}
+
+int if_arp_unset(struct interface *ifp)
+{
+	if (!CHECK_FLAG(ifp->status, ZEBRA_INTERFACE_ACTIVE))
+		return 0;
+
+	if (if_set_flags(ifp, IFF_NOARP) < 0) {
+		zlog_debug("Can't set noarp flag on interface %s", ifp->name);
+		return -1;
+	}
+
+	if_refresh(ifp);
+
+	return 0;
+}
+
 int if_multicast_set(struct interface *ifp)
 {
 	struct zebra_if *if_data;
