@@ -7,11 +7,6 @@
 #ifndef _ZEBRA_PREFIX_H
 #define _ZEBRA_PREFIX_H
 
-#ifdef GNU_LINUX
-#include <net/ethernet.h>
-#else
-#include <netinet/if_ether.h>
-#endif
 #include "sockunion.h"
 #include "ipaddr.h"
 #include "compiler.h"
