@@ -13,7 +13,9 @@
 
 #include <fcntl.h>
 #include <net/ethernet.h>
+#ifndef GNU_LINUX
 #include <netinet/if_ether.h>
+#endif /* !GNU_LINUX */
 #include <linux/netlink.h>
 #include <linux/neighbour.h>
 #include <linux/netfilter/nfnetlink_log.h>

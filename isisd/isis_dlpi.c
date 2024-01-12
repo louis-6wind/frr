@@ -9,7 +9,9 @@
 
 #include <zebra.h>
 #if ISIS_METHOD == ISIS_METHOD_DLPI
+#ifndef GNU_LINUX
 #include <netinet/if_ether.h>
+#endif /* !GNU_LINUX */
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>

@@ -7,12 +7,10 @@
  *                           Institute of Communications Engineering
  */
 #include <zebra.h>
-#ifdef GNU_LINUX
-#include <net/ethernet.h>
-#else
+#ifndef GNU_LINUX
 #include <net/if_arp.h>
 #include <netinet/if_ether.h>
-#endif
+#endif /* !GNU_LINUX */
 
 #include "log.h"
 #include "memory.h"

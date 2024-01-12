@@ -12,8 +12,10 @@
 #include <fcntl.h>
 
 #if ISIS_METHOD == ISIS_METHOD_BPF
+#ifndef GNU_LINUX
 #include <net/if_arp.h>
 #include <netinet/if_ether.h>
+#endif /* !GNU_LINUX */
 #include <sys/time.h>
 #include <sys/ioctl.h>
 #include <net/bpf.h>
