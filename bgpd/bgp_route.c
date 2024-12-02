@@ -12154,16 +12154,19 @@ int bgp_show_table_rtc(struct vty *vty, struct bgp *bgp, safi_t safi, struct bgp
 			ecom = ecommunity_parse(local_p.u.prefix_rtc.route_target, 8, true);
 			ecomstr = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
 
-			vty_out(vty, "Prefix:\n\tRoute Target: %s/%u\n\tOrigin-as: %u\n", ecomstr,
-				local_p.prefixlen, local_p.u.prefix_rtc.origin_as);
+			if (!use_json)
+				vty_out(vty, "Prefix:\n\tRoute Target: %s/%u\n\tOrigin-as: %u\n", ecomstr,
+					local_p.prefixlen, local_p.u.prefix_rtc.origin_as);
 
 			XFREE(MTYPE_ECOMMUNITY_STR, ecomstr);
 			ecommunity_unintern(&ecom);
 
-			route_vty_out_detail_header(vty, bgp, dest, &local_p, NULL, AFI_IP, safi,
-						    NULL, false, false);
-			route_vty_out_detail(vty, bgp, dest, &local_p, pi, AFI_IP, safi,
-					     RPKI_NOT_BEING_USED, NULL);
+			if (type == bgp_show_type_detail && !use_json) {
+				route_vty_out_detail_header(vty, bgp, dest, &local_p, NULL, AFI_IP, safi,
+								NULL, false, false);
+				route_vty_out_detail(vty, bgp, dest, &local_p, pi, AFI_IP, safi,
+							 RPKI_NOT_BEING_USED, NULL);
+			}
 
 			if (next == NULL)
 				show_msg = false;
@@ -12266,6 +12269,10 @@ static int bgp_show(struct vty *vty, struct bgp *bgp, afi_t afi, safi_t safi,
 		return bgp_show_table_rd(vty, bgp, afi, safi, table, NULL, type,
 					 output_arg, show_flags);
 	}
+
+	if (safi == SAFI_RTC)
+		return bgp_show_table_rtc(vty, bgp, safi, table, type,
+					 output_arg, show_flags);
 
 	if (safi == SAFI_FLOWSPEC && type == bgp_show_type_detail) {
 		return bgp_show_table_flowspec(vty, bgp, afi, table, type,
