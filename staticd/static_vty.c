@@ -13,7 +13,9 @@
 #include "nexthop.h"
 #include "table.h"
 #include "srcdest_table.h"
+#ifdef HAVE_STATICD_MGMTD
 #include "mgmt_be_client.h"
+#endif /* HAVE_STATICD_MGMTD */
 #include "mpls.h"
 #include "northbound.h"
 #include "libfrr.h"
@@ -1201,10 +1203,13 @@ DEFPY_YANG(ipv6_route_vrf, ipv6_route_vrf_cmd,
 	return static_route_nb_run(vty, &args);
 }
 
-#ifdef INCLUDE_MGMTD_CMDDEFS_ONLY
+#if defined(INCLUDE_MGMTD_CMDDEFS_ONLY) || !defined(HAVE_STATICD_MGMTD)
 
-static void static_cli_show(struct vty *vty, const struct lyd_node *dnode,
-			    bool show_defaults)
+#ifdef HAVE_STATICD_MGMTD
+static
+#endif /* HAVE_STATICD_MGMTD */
+	void
+	static_cli_show(struct vty *vty, const struct lyd_node *dnode, bool show_defaults)
 {
 	const char *vrf;
 
@@ -1213,7 +1218,11 @@ static void static_cli_show(struct vty *vty, const struct lyd_node *dnode,
 		vty_out(vty, "vrf %s\n", vrf);
 }
 
-static void static_cli_show_end(struct vty *vty, const struct lyd_node *dnode)
+#ifdef HAVE_STATICD_MGMTD
+static
+#endif /* HAVE_STATICD_MGMTD */
+	void
+	static_cli_show_end(struct vty *vty, const struct lyd_node *dnode)
 {
 	const char *vrf;
 
@@ -1413,9 +1422,11 @@ static void nexthop_cli_show(struct vty *vty, const struct lyd_node *route,
 	vty_out(vty, "\n");
 }
 
-static void static_nexthop_cli_show(struct vty *vty,
-				    const struct lyd_node *dnode,
-				    bool show_defaults)
+#ifdef HAVE_STATICD_MGMTD
+static
+#endif /* HAVE_STATICD_MGMTD */
+	void
+	static_nexthop_cli_show(struct vty *vty, const struct lyd_node *dnode, bool show_defaults)
 {
 	const struct lyd_node *path = yang_dnode_get_parent(dnode, "path-list");
 	const struct lyd_node *route =
@@ -1424,9 +1435,12 @@ static void static_nexthop_cli_show(struct vty *vty,
 	nexthop_cli_show(vty, route, NULL, path, dnode, show_defaults);
 }
 
-static void static_src_nexthop_cli_show(struct vty *vty,
-					const struct lyd_node *dnode,
-					bool show_defaults)
+#ifdef HAVE_STATICD_MGMTD
+static
+#endif /* HAVE_STATICD_MGMTD */
+	void
+	static_src_nexthop_cli_show(struct vty *vty, const struct lyd_node *dnode,
+				    bool show_defaults)
 {
 	const struct lyd_node *path = yang_dnode_get_parent(dnode, "path-list");
 	const struct lyd_node *src = yang_dnode_get_parent(path, "src-list");
@@ -1435,8 +1449,11 @@ static void static_src_nexthop_cli_show(struct vty *vty,
 	nexthop_cli_show(vty, route, src, path, dnode, show_defaults);
 }
 
-static int static_nexthop_cli_cmp(const struct lyd_node *dnode1,
-				  const struct lyd_node *dnode2)
+#ifdef HAVE_STATICD_MGMTD
+static
+#endif /* HAVE_STATICD_MGMTD */
+	int
+	static_nexthop_cli_cmp(const struct lyd_node *dnode1, const struct lyd_node *dnode2)
 {
 	enum static_nh_type nh_type1, nh_type2;
 	struct prefix prefix1, prefix2;
@@ -1490,8 +1507,11 @@ static int static_nexthop_cli_cmp(const struct lyd_node *dnode1,
 	return if_cmp_name_func(vrf1, vrf2);
 }
 
-static int static_route_list_cli_cmp(const struct lyd_node *dnode1,
-				     const struct lyd_node *dnode2)
+#ifdef HAVE_STATICD_MGMTD
+static
+#endif /* HAVE_STATICD_MGMTD */
+	int
+	static_route_list_cli_cmp(const struct lyd_node *dnode1, const struct lyd_node *dnode2)
 {
 	const char *afi_safi1, *afi_safi2;
 	afi_t afi1, afi2;
@@ -1516,8 +1536,11 @@ static int static_route_list_cli_cmp(const struct lyd_node *dnode1,
 	return prefix_cmp(&prefix1, &prefix2);
 }
 
-static int static_src_list_cli_cmp(const struct lyd_node *dnode1,
-				   const struct lyd_node *dnode2)
+#ifdef HAVE_STATICD_MGMTD
+static
+#endif /* HAVE_STATICD_MGMTD */
+	int
+	static_src_list_cli_cmp(const struct lyd_node *dnode1, const struct lyd_node *dnode2)
 {
 	struct prefix prefix1, prefix2;
 
@@ -1527,8 +1550,11 @@ static int static_src_list_cli_cmp(const struct lyd_node *dnode1,
 	return prefix_cmp(&prefix1, &prefix2);
 }
 
-static int static_path_list_cli_cmp(const struct lyd_node *dnode1,
-				    const struct lyd_node *dnode2)
+#ifdef HAVE_STATICD_MGMTD
+static
+#endif /* HAVE_STATICD_MGMTD */
+	int
+	static_path_list_cli_cmp(const struct lyd_node *dnode1, const struct lyd_node *dnode2)
 {
 	uint32_t table_id1, table_id2;
 	uint8_t distance1, distance2;
@@ -1600,8 +1626,9 @@ const struct frr_yang_module_info frr_staticd_cli_info = {
 	}
 };
 
-#else /* ifdef INCLUDE_MGMTD_CMDDEFS_ONLY */
+#endif /* defined(INCLUDE_MGMTD_CMDDEFS_ONLY) || !defined(HAVE_STATICD_MGMTD) */
 
+#if !defined(INCLUDE_MGMTD_CMDDEFS_ONLY) || !defined(HAVE_STATICD_MGMTD)
 DEFPY_YANG(debug_staticd, debug_staticd_cmd,
 	   "[no] debug static [{events$events|route$route|bfd$bfd}]",
 	   NO_STR DEBUG_STR STATICD_STR
@@ -1653,17 +1680,19 @@ static struct cmd_node debug_node = {
 	.config_write = static_config_write_debug,
 };
 
-#endif /* ifndef INCLUDE_MGMTD_CMDDEFS_ONLY */
+#endif /* !defined (INCLUDE_MGMTD_CMDDEFS_ONLY) || !defined(HAVE_STATICD_MGMTD) */
 
 void static_vty_init(void)
 {
-#ifndef INCLUDE_MGMTD_CMDDEFS_ONLY
+#if !defined(INCLUDE_MGMTD_CMDDEFS_ONLY) || !defined(HAVE_STATICD_MGMTD)
 	install_node(&debug_node);
 	install_element(ENABLE_NODE, &debug_staticd_cmd);
 	install_element(CONFIG_NODE, &debug_staticd_cmd);
 	install_element(ENABLE_NODE, &show_debugging_static_cmd);
 	install_element(ENABLE_NODE, &staticd_show_bfd_routes_cmd);
-#else /* else INCLUDE_MGMTD_CMDDEFS_ONLY */
+#endif /* !defined(INCLUDE_MGMTD_CMDDEFS_ONLY) || !defined(HAVE_STATICD_MGMTD) */
+
+#if defined(INCLUDE_MGMTD_CMDDEFS_ONLY) || !defined(HAVE_STATICD_MGMTD)
 	install_element(CONFIG_NODE, &ip_mroute_dist_cmd);
 
 	install_element(CONFIG_NODE, &ip_route_blackhole_cmd);
@@ -1679,9 +1708,9 @@ void static_vty_init(void)
 	install_element(VRF_NODE, &ipv6_route_address_interface_vrf_cmd);
 	install_element(CONFIG_NODE, &ipv6_route_cmd);
 	install_element(VRF_NODE, &ipv6_route_vrf_cmd);
-#endif /* ifndef INCLUDE_MGMTD_CMDDEFS_ONLY */
+#endif /* defined(INCLUDE_MGMTD_CMDDEFS_ONLY)  || !defined(HAVE_STATICD_MGMTD) */
 
-#ifndef INCLUDE_MGMTD_CMDDEFS_ONLY
+#if !defined(INCLUDE_MGMTD_CMDDEFS_ONLY) && defined(HAVE_STATICD_MGMTD)
 	mgmt_be_client_lib_vty_init();
-#endif
+#endif /* !defined(INCLUDE_MGMTD_CMDDEFS_ONLY) && defined(HAVE_STATICD_MGMTD) */
 }
