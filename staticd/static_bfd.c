@@ -79,24 +79,37 @@ static_next_hop_type_to_family(const struct static_nexthop *sn)
 }
 
 void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
+#ifdef HAVE_STATICD_NB
 					const struct lyd_node *dnode)
+#else
+					struct ipaddr *src_addr, const char *profile, bool onlink,
+					bool mhop, struct static_vrf *svrf)
+#endif
 {
-	bool use_interface;
-	bool use_profile;
 	bool use_source;
+	bool use_interface = false;
+#ifdef HAVE_STATICD_NB
+	bool use_profile;
 	bool onlink;
 	bool mhop;
-	int family;
+#endif /* HAVE_STATICD_NB */
 	struct ipaddr source;
 	struct vrf *vrf = NULL;
+	int family;
 
-	use_interface = false;
+#ifdef HAVE_STATICD_NB
 	use_source = yang_dnode_exists(dnode, "source");
 	use_profile = yang_dnode_exists(dnode, "profile");
 	onlink = yang_dnode_exists(dnode, "../onlink") &&
 		 yang_dnode_get_bool(dnode, "../onlink");
 	mhop = yang_dnode_get_bool(dnode, "multi-hop");
 	vrf = vrf_lookup_by_name(yang_dnode_get_string(dnode, "../vrf"));
+#else
+	if (!svrf->vrf)
+		svrf->vrf = vrf_lookup_by_name(svrf->name);
+
+	vrf = svrf->vrf;
+#endif /* !HAVE_STATICD_NB */
 
 	family = static_next_hop_type_to_family(sn);
 	if (family == AF_UNSPEC)
@@ -110,9 +123,17 @@ void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
 	if (sn->bsp == NULL)
 		sn->bsp = bfd_sess_new(static_next_hop_bfd_updatecb, sn);
 
+#ifdef HAVE_STATICD_NB
 	/* Configure the session. */
 	if (use_source)
 		yang_dnode_get_ip(&source, dnode, "source");
+#else  /* HAVE_STATICD_NB */
+	if (src_addr) {
+		use_source = true;
+		source = *src_addr;
+	} else
+		use_source = false;
+#endif /* !HAVE_STATICD_NB */
 
 	if (onlink || mhop == false)
 		bfd_sess_set_auto_source(sn->bsp, false);
@@ -131,13 +152,24 @@ void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
 
 	bfd_sess_set_interface(sn->bsp, use_interface ? sn->ifname : NULL);
 
+#ifdef HAVE_STATICD_NB
 	bfd_sess_set_profile(sn->bsp, use_profile ? yang_dnode_get_string(
 							    dnode, "./profile")
 						  : NULL);
+#else  /* HAVE_STATICD_NB */
+	bfd_sess_set_profile(sn->bsp, profile);
+#endif /* !HAVE_STATICD_NB */
+
 	if (vrf && vrf->vrf_id != VRF_UNKNOWN)
 		bfd_sess_set_vrf(sn->bsp, vrf->vrf_id);
 
 	bfd_sess_set_hop_count(sn->bsp, (onlink || mhop == false) ? 1 : 254);
+
+#ifndef HAVE_STATICD_NB
+	if (strncmp(svrf->name, VRF_DEFAULT_NAME, sizeof(svrf->name)) &&
+	    (!vrf || vrf->vrf_id == VRF_UNKNOWN))
+		return;
+#endif /* !HAVE_STATICD_NB */
 
 	/* Install or update the session. */
 	bfd_sess_install(sn->bsp);

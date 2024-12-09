@@ -253,7 +253,12 @@ extern void static_next_hop_bfd_source(struct static_nexthop *sn,
 				       const struct ipaddr *source);
 extern void static_next_hop_bfd_auto_source(struct static_nexthop *sn);
 extern void static_next_hop_bfd_monitor_enable(struct static_nexthop *sn,
+#ifdef HAVE_STATICD_NB
 					       const struct lyd_node *dnode);
+#else
+					       struct ipaddr *src_addr, const char *profile,
+					       bool onlink, bool mhop, struct static_vrf *svrf);
+#endif
 extern void static_next_hop_bfd_monitor_disable(struct static_nexthop *sn);
 extern void static_next_hop_bfd_profile(struct static_nexthop *sn,
 					const char *name);

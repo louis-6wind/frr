@@ -29,6 +29,7 @@
 #include "static_vty.h"
 #include "static_routes.h"
 #include "static_debug.h"
+#include "static_zebra.h"
 #include "staticd/static_vty_clippy.c"
 #ifdef HAVE_STATICD_NB
 #include "static_nb.h"
@@ -726,12 +727,13 @@ static void static_route_args_install(struct static_route_args *args, struct sta
 	struct static_nh_label snh_label = {};
 	struct static_nh_seg snh_seg = {};
 	uint32_t color = 0;
-	bool pm = false;
 	bool onlink = false;
 	bool update_path = false, update_nexthop = false;
 	char *ostr, *orig_label, *orig_seg, *nump;
 	struct static_path *pn;
 	struct route_node *rn;
+	struct ipaddr bfd_src_addr = {};
+	bool bfd = false;
 
 	if (args->source)
 		str2prefix_ipv6(args->source, &src);
@@ -785,7 +787,6 @@ static void static_route_args_install(struct static_route_args *args, struct sta
 		/* no break was deliberately set before these cases */
 		if (args->color)
 			color = atoi(args->color);
-		pm = args->pm;
 		/* fall through */
 	case STATIC_IFNAME:
 		/* no break was deliberately set before these cases */
@@ -807,6 +808,11 @@ static void static_route_args_install(struct static_route_args *args, struct sta
 				snh_label.label[label_stack_id] = atoi(nump);
 			snh_label.num_labels = label_stack_id;
 			XFREE(MTYPE_TMP, orig_label);
+		}
+		if (args->bfd) {
+			bfd = true;
+			if (args->bfd_source)
+				str2ipaddr(args->bfd_source, &bfd_src_addr);
 		}
 		break;
 	case STATIC_BLACKHOLE:
@@ -860,13 +866,38 @@ static void static_route_args_install(struct static_route_args *args, struct sta
 			run_args->nh->state = STATIC_START;
 			update_nexthop = true;
 		}
-		if (run_args->nh->pm != pm) {
-			/* pm update */
-			if (pm)
-				static_next_hop_pm_update(run_args->nh);
-			else
-				static_next_hop_pm_destroy(run_args->nh);
-			run_args->nh->state = STATIC_START;
+		/* bfd update */
+		if (run_args->nh->bsp) {
+			if (bfd) {
+				if ((!!run_args->bfd_source != !!args->bfd_source) ||
+				    ((run_args->bfd_source && args->bfd_source &&
+				      strcmp(run_args->bfd_source, args->bfd_source)))) {
+					if (args->bfd_source)
+						static_next_hop_bfd_source(run_args->nh,
+									   &bfd_src_addr);
+					else {
+						static_next_hop_bfd_auto_source(run_args->nh);
+						static_zebra_nht_register(run_args->nh, false);
+					}
+				}
+				if (run_args->bfd_multi_hop != args->bfd_multi_hop)
+					static_next_hop_bfd_multi_hop(run_args->nh,
+								      args->bfd_multi_hop);
+				if ((!!run_args->bfd_profile != !!args->bfd_profile) ||
+				    ((run_args->bfd_profile && args->bfd_profile &&
+				      strcmp(run_args->bfd_profile, args->bfd_profile))))
+					static_next_hop_bfd_profile(run_args->nh, args->bfd_profile);
+				update_nexthop = true;
+			} else {
+				static_next_hop_bfd_monitor_disable(run_args->nh);
+				update_nexthop = true;
+			}
+		} else if (bfd) {
+			static_next_hop_bfd_monitor_enable(run_args->nh,
+							   args->bfd_source ? &bfd_src_addr : NULL,
+							   args->bfd_profile, onlink,
+							   args->bfd_multi_hop,
+							   svrf);
 			update_nexthop = true;
 		}
 
@@ -882,18 +913,22 @@ static void static_route_args_install(struct static_route_args *args, struct sta
 	rn = static_add_route(args->afi, args->safi, &args->p, args->source ? &src : NULL, svrf);
 	pn = static_add_path(rn, table_id, distance);
 	pn->tag = tag;
-	args->nh = static_add_nexthop(pn, type, &gw, args->interface_name, args->nexthop_vrf, color,
-				      pm);
+	args->nh = static_add_nexthop(pn, type, &gw, args->interface_name, args->nexthop_vrf, color);
 	args->nh->bh_type = bh_type;
 	args->nh->onlink = onlink;
 	memcpy(&args->nh->snh_label, &snh_label, sizeof(struct static_nh_label));
 	memcpy(&args->nh->snh_seg, &snh_seg, sizeof(struct static_nh_seg));
-
+	if (bfd)
+		static_next_hop_bfd_monitor_enable(args->nh, args->bfd_source ? &bfd_src_addr : NULL,
+						   args->bfd_profile, onlink, args->bfd_multi_hop,
+						   svrf);
 	static_install_nexthop(args->nh);
 }
 
 static void static_route_args_uninstall(struct static_route_args *args)
 {
+	if (args->bfd)
+		static_next_hop_bfd_monitor_disable(args->nh);
 	if (args->nh) {
 		static_delete_nexthop(args->nh);
 		args->nh = NULL;
