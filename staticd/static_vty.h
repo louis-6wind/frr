@@ -63,6 +63,9 @@ struct static_route_args {
 
 #ifndef HAVE_STATICD_NB
 	struct prefix p;
+
+	/* Store installed data */
+	struct static_nexthop *nh;
 #endif /* !HAVE_STATICD_NB */
 };
 
