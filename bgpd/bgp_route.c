@@ -6680,7 +6680,7 @@ int bgp_nlri_parse_ip(struct peer *peer, struct attr *attr,
 	return BGP_NLRI_PARSE_OK;
 }
 
-static void bgp_nexthop_reachability_check(afi_t afi, safi_t safi,
+void bgp_nexthop_reachability_check(afi_t afi, safi_t safi,
 					   struct bgp_path_info *bpi,
 					   const struct prefix *p,
 					   struct bgp_dest *dest,
@@ -12275,6 +12275,9 @@ static int bgp_show(struct vty *vty, struct bgp *bgp, afi_t afi, safi_t safi,
 
 	if (safi == SAFI_EVPN)
 		return bgp_evpn_show_all_routes(vty, bgp, type, use_json, 0);
+
+	if (safi == SAFI_RTC)
+		return bgp_show_table_rtc(vty, bgp, safi, table, type, output_arg, show_flags);
 
 	return bgp_show_table(vty, bgp, afi, safi, table, type, output_arg, NULL, 1,
 			      NULL, NULL, &json_header_depth, show_flags,
