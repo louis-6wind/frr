@@ -1,0 +1,85 @@
+{
+  "default": {
+    "ipv4Vpn": {
+      "routerId": "192.168.0.203",
+      "as": 65203,
+      "vrfName": "default",
+      "peers": {
+        "10.0.10.201": {
+          "hostname": "p1",
+          "remoteAs": 65201,
+          "localAs": 65203,
+          "pfxRcd": 6,
+          "pfxSnt": 8,
+          "state": "Established"
+        },
+        "10.0.13.103": {
+          "hostname": "rr3",
+          "remoteAs": 65001,
+          "localAs": 65203,
+          "pfxRcd": 2,
+          "pfxSnt": 8,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 2,
+      "totalPeers": 2,
+      "dynamicPeers": 0
+    },
+    "ipv4Rtc": {
+      "routerId": "192.168.0.203",
+      "as": 65203,
+      "vrfName": "default",
+      "peers": {
+        "10.0.10.201": {
+          "hostname": "p1",
+          "remoteAs": 65201,
+          "localAs": 65203,
+          "pfxRcd": 3,
+          "pfxSnt": 6,
+          "state": "Established"
+        },
+        "10.0.13.103": {
+          "hostname": "rr3",
+          "remoteAs": 65001,
+          "localAs": 65203,
+          "pfxRcd": 3,
+          "pfxSnt": 6,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 2,
+      "totalPeers": 2,
+      "dynamicPeers": 0
+    },
+    "ipv6Vpn": {
+      "routerId": "192.168.0.203",
+      "as": 65203,
+      "vrfName": "default",
+      "peers": {
+        "10.0.10.201": {
+          "hostname": "p1",
+          "remoteAs": 65201,
+          "localAs": 65203,
+          "pfxRcd": 6,
+          "pfxSnt": 8,
+          "state": "Established"
+        },
+        "10.0.13.103": {
+          "hostname": "rr3",
+          "remoteAs": 65001,
+          "localAs": 65203,
+          "pfxRcd": 2,
+          "pfxSnt": 8,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 2,
+      "totalPeers": 2,
+      "dynamicPeers": 0
+    }
+  }
+}

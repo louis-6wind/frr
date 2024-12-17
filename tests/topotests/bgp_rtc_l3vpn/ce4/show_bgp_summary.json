@@ -1,0 +1,50 @@
+{
+  "default": {
+    "ipv4Unicast": {
+      "routerId": "172.16.3.254",
+      "as": 65504,
+      "vrfName": "default",
+      "peers": {
+        "172.16.4.1": {
+          "hostname": "pe2",
+          "remoteAs": 65000,
+          "localAs": 65504,
+          "pfxRcd": 1,
+          "pfxSnt": 2,
+          "state": "Established"
+        },
+        "3fff:4::1": {
+          "hostname": "pe2",
+          "remoteAs": 65000,
+          "localAs": 65504,
+          "pfxRcd": 0,
+          "pfxSnt": 0,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 1,
+      "displayedPeers": 2,
+      "totalPeers": 2,
+      "dynamicPeers": 0
+    },
+    "ipv6Unicast": {
+      "routerId": "172.16.3.254",
+      "as": 65504,
+      "vrfName": "default",
+      "peers": {
+        "3fff:4::1": {
+          "hostname": "pe2",
+          "remoteAs": 65000,
+          "localAs": 65504,
+          "pfxRcd": 1,
+          "pfxSnt": 2,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    }
+  }
+}

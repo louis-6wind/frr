@@ -1,0 +1,181 @@
+{
+  "default": {
+    "ipv4Vpn": {
+      "routerId": "192.168.0.5",
+      "as": 65001,
+      "vrfName": "default",
+      "peers": {
+        "192.168.0.103": {
+          "hostname": "rr3",
+          "remoteAs": 65001,
+          "localAs": 65001,
+          "pfxRcd": 6,
+          "pfxSnt": 3,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    },
+    "ipv4Rtc": {
+      "routerId": "192.168.0.5",
+      "as": 65001,
+      "vrfName": "default",
+      "peers": {
+        "192.168.0.103": {
+          "hostname": "rr3",
+          "remoteAs": 65001,
+          "localAs": 65001,
+          "pfxRcd": 3,
+          "pfxSnt": 3,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    },
+    "ipv6Vpn": {
+      "routerId": "192.168.0.5",
+      "as": 65001,
+      "vrfName": "default",
+      "peers": {
+        "3fff::192:168:0:103": {
+          "hostname": "rr3",
+          "remoteAs": 65001,
+          "localAs": 65001,
+          "pfxRcd": 6,
+          "pfxSnt": 3,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    }
+  },
+  "RED": {
+    "ipv4Unicast": {
+      "routerId": "192.168.0.5",
+      "as": 65001,
+      "vrfName": "RED",
+      "peers": {
+        "172.16.9.254": {
+          "hostname": "ce9",
+          "remoteAs": 65509,
+          "localAs": 65001,
+          "pfxRcd": 1,
+          "pfxSnt": 5,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    },
+    "ipv6Unicast": {
+      "routerId": "192.168.0.5",
+      "as": 65001,
+      "vrfName": "RED",
+      "peers": {
+        "3fff:9::ff": {
+          "hostname": "ce9",
+          "remoteAs": 65509,
+          "localAs": 65001,
+          "pfxRcd": 1,
+          "pfxSnt": 5,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    }
+  },
+  "BLUE": {
+    "ipv4Unicast": {
+      "routerId": "192.168.0.5",
+      "as": 65001,
+      "vrfName": "BLUE",
+      "peers": {
+        "172.16.10.254": {
+          "hostname": "ce10",
+          "remoteAs": 65510,
+          "localAs": 65001,
+          "pfxRcd": 1,
+          "pfxSnt": 3,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    },
+    "ipv6Unicast": {
+      "routerId": "192.168.0.5",
+      "as": 65001,
+      "vrfName": "BLUE",
+      "peers": {
+        "3fff:10::ff": {
+          "hostname": "ce10",
+          "remoteAs": 65510,
+          "localAs": 65001,
+          "pfxRcd": 1,
+          "pfxSnt": 3,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    }
+  },
+  "ORANGE": {
+    "ipv4Unicast": {
+      "routerId": "192.168.0.5",
+      "as": 65001,
+      "vrfName": "ORANGE",
+      "peers": {
+        "172.16.11.254": {
+          "hostname": "ce11",
+          "remoteAs": 65510,
+          "localAs": 65001,
+          "pfxRcd": 1,
+          "pfxSnt": 1,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    },
+    "ipv6Unicast": {
+      "routerId": "192.168.0.5",
+      "as": 65001,
+      "vrfName": "ORANGE",
+      "peers": {
+        "3fff:11::ff": {
+          "hostname": "ce11",
+          "remoteAs": 65510,
+          "localAs": 65001,
+          "pfxRcd": 1,
+          "pfxSnt": 1,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    }
+  }
+}

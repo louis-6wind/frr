@@ -1,0 +1,141 @@
+{
+  "default": {
+    "ipv4Vpn": {
+      "routerId": "192.168.0.4",
+      "as": 65000,
+      "vrfName": "default",
+      "peers": {
+        "192.168.0.102": {
+          "hostname": "rr2",
+          "remoteAs": 65000,
+          "localAs": 65000,
+          "pfxRcd": 5,
+          "pfxSnt": 2,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    },
+    "ipv4Rtc": {
+      "routerId": "192.168.0.4",
+      "as": 65000,
+      "vrfName": "default",
+      "peers": {
+        "192.168.0.102": {
+          "hostname": "rr2",
+          "remoteAs": 65000,
+          "localAs": 65000,
+          "pfxRcd": 6,
+          "pfxSnt": 2,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    },
+    "ipv6Vpn": {
+      "routerId": "192.168.0.4",
+      "as": 65000,
+      "vrfName": "default",
+      "peers": {
+        "3fff::192:168:0:102": {
+          "hostname": "rr2",
+          "remoteAs": 65000,
+          "localAs": 65000,
+          "pfxRcd": 8,
+          "pfxSnt": 2,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    }
+  },
+  "RED": {
+    "ipv4Unicast": {
+      "routerId": "192.168.0.4",
+      "as": 65000,
+      "vrfName": "RED",
+      "peers": {
+        "172.16.7.254": {
+          "hostname": "ce7",
+          "remoteAs": 65507,
+          "localAs": 65000,
+          "pfxRcd": 1,
+          "pfxSnt": 5,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    },
+    "ipv6Unicast": {
+      "routerId": "192.168.0.4",
+      "as": 65000,
+      "vrfName": "RED",
+      "peers": {
+        "3fff:7::ff": {
+          "hostname": "ce7",
+          "remoteAs": 65507,
+          "localAs": 65000,
+          "pfxRcd": 1,
+          "pfxSnt": 5,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    }
+  },
+  "GREEN": {
+    "ipv4Unicast": {
+      "routerId": "192.168.0.4",
+      "as": 65000,
+      "vrfName": "GREEN",
+      "peers": {
+        "172.16.8.254": {
+          "hostname": "ce8",
+          "remoteAs": 65508,
+          "localAs": 65000,
+          "pfxRcd": 1,
+          "pfxSnt": 2,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    },
+    "ipv6Unicast": {
+      "routerId": "192.168.0.4",
+      "as": 65000,
+      "vrfName": "GREEN",
+      "peers": {
+        "3fff:8::ff": {
+          "hostname": "ce8",
+          "remoteAs": 65508,
+          "localAs": 65000,
+          "pfxRcd": 1,
+          "pfxSnt": 2,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 1,
+      "totalPeers": 1,
+      "dynamicPeers": 0
+    }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "default": {
+    "ipv4Vpn": {
+      "routerId": "192.168.0.103",
+      "as": 65001,
+      "vrfName": "default",
+      "peers": {
+        "10.0.13.203": {
+          "hostname": "p3",
+          "remoteAs": 65203,
+          "localAs": 65001,
+          "pfxRcd": 6,
+          "pfxSnt": 9,
+          "state": "Established"
+        },
+        "10.0.14.205": {
+          "hostname": "p5",
+          "remoteAs": 65205,
+          "localAs": 65001,
+          "pfxRcd": 0,
+          "pfxSnt": 9,
+          "state": "Established"
+        },
+        "192.168.0.5": {
+          "hostname": "pe5",
+          "remoteAs": 65001,
+          "localAs": 65001,
+          "pfxRcd": 3,
+          "pfxSnt": 9,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 3,
+      "totalPeers": 3,
+      "dynamicPeers": 0
+    },
+    "ipv4Rtc": {
+      "routerId": "192.168.0.103",
+      "as": 65001,
+      "vrfName": "default",
+      "peers": {
+        "10.0.13.203": {
+          "hostname": "p3",
+          "remoteAs": 65203,
+          "localAs": 65001,
+          "pfxRcd": 3,
+          "pfxSnt": 6,
+          "state": "Established"
+        },
+        "10.0.14.205": {
+          "hostname": "p5",
+          "remoteAs": 65205,
+          "localAs": 65001,
+          "pfxRcd": 3,
+          "pfxSnt": 6,
+          "state": "Established"
+        },
+        "192.168.0.5": {
+          "hostname": "pe5",
+          "remoteAs": 65001,
+          "localAs": 65001,
+          "pfxRcd": 3,
+          "pfxSnt": 6,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 3,
+      "totalPeers": 3,
+      "dynamicPeers": 0
+    },
+    "ipv6Vpn": {
+      "routerId": "192.168.0.103",
+      "as": 65001,
+      "vrfName": "default",
+      "peers": {
+        "10.0.13.203": {
+          "hostname": "p3",
+          "remoteAs": 65203,
+          "localAs": 65001,
+          "pfxRcd": 6,
+          "pfxSnt": 9,
+          "state": "Established"
+        },
+        "10.0.14.205": {
+          "hostname": "p5",
+          "remoteAs": 65205,
+          "localAs": 65001,
+          "pfxRcd": 0,
+          "pfxSnt": 9,
+          "state": "Established"
+        },
+        "3fff::192:168:0:5": {
+          "hostname": "pe5",
+          "remoteAs": 65001,
+          "localAs": 65001,
+          "pfxRcd": 3,
+          "pfxSnt": 9,
+          "state": "Established"
+        }
+      },
+      "failedPeers": 0,
+      "displayedPeers": 3,
+      "totalPeers": 3,
+      "dynamicPeers": 0
+    }
+  }
+}
