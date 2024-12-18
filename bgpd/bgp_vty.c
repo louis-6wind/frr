@@ -524,7 +524,12 @@ int argv_find_and_parse_safi(struct cmd_token **argv, int argc, int *index,
 		ret = 1;
 		if (safi)
 			*safi = SAFI_FLOWSPEC;
+	} else if (argv_find(argv, argc, "rt-constraint", index)) {
+		ret = 1;
+		if (safi)
+			*safi = SAFI_RTC;
 	}
+
 	return ret;
 }
 
@@ -10777,7 +10782,7 @@ DEFPY (af_routetarget_import,
 
 DEFUN_NOSH (address_family_ipv4_safi,
 	address_family_ipv4_safi_cmd,
-	"address-family ipv4 [<unicast|multicast|vpn|labeled-unicast|flowspec>]",
+	"address-family ipv4 [<unicast|multicast|vpn|labeled-unicast|flowspec|rt-constraint>]",
 	"Enter Address Family command mode\n"
 	BGP_AF_STR
 	BGP_SAFI_WITH_LABEL_HELP_STR)
@@ -10802,7 +10807,7 @@ DEFUN_NOSH (address_family_ipv4_safi,
 
 DEFUN_NOSH (address_family_ipv6_safi,
 	address_family_ipv6_safi_cmd,
-	"address-family ipv6 [<unicast|multicast|vpn|labeled-unicast|flowspec>]",
+	"address-family ipv6 [<unicast|multicast|vpn|labeled-unicast|flowspec|rt-constraint>]",
 	"Enter Address Family command mode\n"
 	BGP_AF_STR
 	BGP_SAFI_WITH_LABEL_HELP_STR)
@@ -10857,15 +10862,6 @@ DEFUN_NOSH (address_family_evpn,
 {
 	VTY_DECLVAR_CONTEXT(bgp, bgp);
 	vty->node = BGP_EVPN_NODE;
-	return CMD_SUCCESS;
-}
-
-DEFUN_NOSH(address_family_rtc, address_family_rtc_cmd,
-	   "address-family ipv4 rt-constraint",
-	   "Enter Address Family command mode\n" BGP_AF_STR BGP_AF_MODIFIER_STR)
-{
-	VTY_DECLVAR_CONTEXT(bgp, bgp);
-	vty->node = BGP_RTC_NODE;
 	return CMD_SUCCESS;
 }
 
@@ -11112,7 +11108,7 @@ static int bgp_clear_prefix(struct vty *vty, const char *view_name,
 /* one clear bgp command to rule them all */
 DEFUN (clear_ip_bgp_all,
        clear_ip_bgp_all_cmd,
-       "clear [ip] bgp [<view|vrf> VIEWVRFNAME] [<ipv4|ipv6|l2vpn> [<unicast|multicast|vpn|labeled-unicast|flowspec|evpn>]] <*|A.B.C.D$neighbor|X:X::X:X$neighbor|WORD$neighbor|ASNUM|external|peer-group PGNAME> [<soft [<in|out>]|in [prefix-filter]|out|message-stats|capabilities>]",
+       "clear [ip] bgp [<view|vrf> VIEWVRFNAME] [<ipv4|ipv6|l2vpn> [<unicast|multicast|vpn|labeled-unicast|flowspec|evpn|rt-constraint>]] <*|A.B.C.D$neighbor|X:X::X:X$neighbor|WORD$neighbor|ASNUM|external|peer-group PGNAME> [<soft [<in|out>]|in [prefix-filter]|out|message-stats|capabilities>]",
        CLEAR_STR
        IP_STR
        BGP_STR
@@ -21897,8 +21893,6 @@ void bgp_vty_init(void)
 #endif /* KEEP_OLD_VPN_COMMANDS */
 
 	install_element(BGP_NODE, &address_family_evpn_cmd);
-
-	install_element(BGP_NODE, &address_family_rtc_cmd);
 
 	/* "exit-address-family" command. */
 	install_element(BGP_IPV4_NODE, &exit_address_family_cmd);
