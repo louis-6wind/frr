@@ -397,6 +397,9 @@ static inline void ipv4_addr_copy(struct in_addr *dst,
 #define s6_addr32 __u6_addr.__u6_addr32
 #endif /*s6_addr32*/
 
+extern void prefix_set_rtc_display_hook(char *(*func)(char *buf, size_t buf_size, uint16_t prefixlen,
+						      const struct rtc_info *rtc_info));
+
 /* Prototypes. */
 extern int str2family(const char *string);
 extern int afi2family(afi_t afi);
