@@ -523,7 +523,12 @@ int argv_find_and_parse_safi(struct cmd_token **argv, int argc, int *index,
 		ret = 1;
 		if (safi)
 			*safi = SAFI_FLOWSPEC;
+	} else if (argv_find(argv, argc, "rt-constraint", index)) {
+		ret = 1;
+		if (safi)
+			*safi = SAFI_RTC;
 	}
+
 	return ret;
 }
 
@@ -10746,10 +10751,10 @@ DEFPY (af_routetarget_import,
 
 DEFUN_NOSH (address_family_ipv4_safi,
 	address_family_ipv4_safi_cmd,
-	"address-family ipv4 [<unicast|multicast|vpn|labeled-unicast|flowspec>]",
+	"address-family ipv4 [<unicast|multicast|vpn|labeled-unicast|flowspec|rt-constraint>]",
 	"Enter Address Family command mode\n"
 	BGP_AF_STR
-	BGP_SAFI_WITH_LABEL_HELP_STR)
+	BGP_SAFI_NO_EVPN_HELP_STR)
 {
 
 	if (argc == 3) {
@@ -10826,15 +10831,6 @@ DEFUN_NOSH (address_family_evpn,
 {
 	VTY_DECLVAR_CONTEXT(bgp, bgp);
 	vty->node = BGP_EVPN_NODE;
-	return CMD_SUCCESS;
-}
-
-DEFUN_NOSH(address_family_rtc, address_family_rtc_cmd,
-	   "address-family ipv4 rt-constraint",
-	   "Enter Address Family command mode\n" BGP_AF_STR BGP_AF_MODIFIER_STR)
-{
-	VTY_DECLVAR_CONTEXT(bgp, bgp);
-	vty->node = BGP_RTC_NODE;
 	return CMD_SUCCESS;
 }
 
@@ -11081,14 +11077,14 @@ static int bgp_clear_prefix(struct vty *vty, const char *view_name,
 /* one clear bgp command to rule them all */
 DEFUN (clear_ip_bgp_all,
        clear_ip_bgp_all_cmd,
-       "clear [ip] bgp [<view|vrf> VIEWVRFNAME] [<ipv4|ipv6|l2vpn> [<unicast|multicast|vpn|labeled-unicast|flowspec|evpn>]] <*|A.B.C.D$neighbor|X:X::X:X$neighbor|WORD$neighbor|ASNUM|external|peer-group PGNAME> [<soft [<in|out>]|in [prefix-filter]|out|message-stats|capabilities>]",
+       "clear [ip] bgp [<view|vrf> VIEWVRFNAME] [<ipv4|ipv6|l2vpn> [<unicast|multicast|vpn|labeled-unicast|flowspec|evpn|rt-constraint>]] <*|A.B.C.D$neighbor|X:X::X:X$neighbor|WORD$neighbor|ASNUM|external|peer-group PGNAME> [<soft [<in|out>]|in [prefix-filter]|out|message-stats|capabilities>]",
        CLEAR_STR
        IP_STR
        BGP_STR
        BGP_INSTANCE_HELP_STR
        BGP_AFI_HELP_STR
        BGP_AF_STR
-       BGP_SAFI_WITH_LABEL_HELP_STR
+       BGP_SAFI_NO_EVPN_HELP_STR
        BGP_AF_MODIFIER_STR
        "Clear all peers\n"
        "BGP IPv4 neighbor to clear\n"
@@ -12882,10 +12878,10 @@ int bgp_show_summary_vty(struct vty *vty, const char *name, afi_t afi,
 /* `show [ip] bgp summary' commands. */
 DEFPY(show_ip_bgp_summary, show_ip_bgp_summary_cmd,
       "show [ip] bgp [<view|vrf> VIEWVRFNAME] [" BGP_AFI_CMD_STR
-      " [" BGP_SAFI_WITH_LABEL_CMD_STR
+      " [" BGP_SAFI_NO_EVPN_CMD_STR
       "]] [all$all] summary [established|failed] [<neighbor <A.B.C.D|X:X::X:X|WORD>|remote-as <ASNUM|internal|external>>] [terse] [wide] [json$uj]",
       SHOW_STR IP_STR BGP_STR BGP_INSTANCE_HELP_STR BGP_AFI_HELP_STR
-	      BGP_SAFI_WITH_LABEL_HELP_STR
+	      BGP_SAFI_NO_EVPN_HELP_STR
       "Display the entries for all address families\n"
       "Summary of BGP neighbor status\n"
       "Show only sessions in Established state\n"
@@ -16891,13 +16887,13 @@ static int bgp_show_update_groups(struct vty *vty, const char *name, int afi,
 
 DEFUN (show_ip_bgp_updgrps,
        show_ip_bgp_updgrps_cmd,
-       "show [ip] bgp [<view|vrf> VIEWVRFNAME] ["BGP_AFI_CMD_STR" ["BGP_SAFI_WITH_LABEL_CMD_STR"]] update-groups [SUBGROUP-ID] [json]",
+       "show [ip] bgp [<view|vrf> VIEWVRFNAME] ["BGP_AFI_CMD_STR" ["BGP_SAFI_NO_EVPN_CMD_STR"]] update-groups [SUBGROUP-ID] [json]",
        SHOW_STR
        IP_STR
        BGP_STR
        BGP_INSTANCE_HELP_STR
        BGP_AFI_HELP_STR
-       BGP_SAFI_WITH_LABEL_HELP_STR
+       BGP_SAFI_NO_EVPN_HELP_STR
        "Detailed info about dynamic update groups\n"
        "Specific subgroup to display detailed info for\n"
        JSON_STR)
@@ -21891,8 +21887,6 @@ void bgp_vty_init(void)
 #endif /* KEEP_OLD_VPN_COMMANDS */
 
 	install_element(BGP_NODE, &address_family_evpn_cmd);
-
-	install_element(BGP_NODE, &address_family_rtc_cmd);
 
 	/* "exit-address-family" command. */
 	install_element(BGP_IPV4_NODE, &exit_address_family_cmd);
