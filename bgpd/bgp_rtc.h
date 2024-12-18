@@ -22,4 +22,7 @@ extern void bgp_rtc_add_dynamic(struct bgp *bgp, struct ecommunity_val *eval, ui
 extern void bgp_rtc_remove_dynamic(struct bgp *bgp, struct ecommunity_val *eval, uint32_t prefixlen);
 extern int bgp_rtc_static_from_str(struct vty *vty, struct bgp *bgp, const char *str, bool add);
 
+extern char *bgp_rtc_prefix_display(char *buf, size_t size, uint16_t prefix_len,
+				    const struct rtc_info *rtc_info);
+extern void bgp_rtc_init(void);
 #endif /* BGP_RTC_H */
