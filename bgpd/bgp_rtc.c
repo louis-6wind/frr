@@ -297,3 +297,30 @@ int bgp_rtc_static_from_str(struct vty *vty, struct bgp *bgp, const char *str, b
 
 	return CMD_SUCCESS;
 }
+
+char *bgp_rtc_prefix_display(char *buf, size_t size, uint16_t prefix_len,
+			     const struct rtc_info *rtc_info)
+{
+	struct ecommunity *ecom;
+	char *ecomstr;
+	char *cbuf = buf;
+
+	if (prefix_len == 96) {
+		ecom = ecommunity_parse((uint8_t *)rtc_info->route_target, 8, true);
+		ecomstr = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
+
+		snprintfrr(buf, size, "%u:%s", rtc_info->origin_as, ecomstr);
+	} else if (prefix_len == 32)
+		snprintfrr(buf, size, "%u:RT:0", rtc_info->origin_as);
+	else if (prefix_len == 0)
+		snprintfrr(buf, size, "0:RT:0");
+	else
+		snprintfrr(buf, size, "UNK RTC Prefix");
+
+	return cbuf;
+}
+
+void bgp_rtc_init(void)
+{
+	prefix_set_rtc_display_hook(bgp_rtc_prefix_display);
+}
