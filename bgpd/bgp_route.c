@@ -13123,11 +13123,11 @@ DEFUN (show_ip_bgp_l2vpn_evpn_statistics,
 /* BGP route print out function without JSON */
 DEFUN(show_ip_bgp_afi_safi_statistics, show_ip_bgp_afi_safi_statistics_cmd,
       "show [ip] bgp [<view|vrf> VIEWVRFNAME] [" BGP_AFI_CMD_STR
-      " [" BGP_SAFI_WITH_LABEL_CMD_STR
+      " [" BGP_SAFI_NO_EVPN_CMD_STR
       "]]\
          statistics [json]",
       SHOW_STR IP_STR BGP_STR BGP_INSTANCE_HELP_STR BGP_AFI_HELP_STR
-	      BGP_SAFI_WITH_LABEL_HELP_STR
+	      BGP_SAFI_NO_EVPN_HELP_STR
       "BGP RIB advertisement statistics\n" JSON_STR)
 {
 	afi_t afi = AFI_IP6;
