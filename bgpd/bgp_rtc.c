@@ -53,7 +53,5 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 		}
 	}
 
-	bgp_announce_route(peer, AFI_L2VPN, SAFI_EVPN, false);
-
 	return BGP_NLRI_PARSE_OK;
 }
