@@ -2290,6 +2290,7 @@ static int bgp_update_receive(struct peer_connection *connection,
 	bgp_size_t update_len;
 	bgp_size_t withdraw_len;
 	bool restart = false;
+	bool safi_rtc_refresh = false;
 
 	enum NLRI_TYPES {
 		NLRI_UPDATE,
@@ -2485,11 +2486,15 @@ static int bgp_update_receive(struct peer_connection *connection,
 		case NLRI_MP_UPDATE:
 			nlri_ret = bgp_nlri_parse(peer, NLRI_ATTR_ARG,
 						  &nlris[i], 0);
+			if (nlris[i].safi == SAFI_RTC)
+				safi_rtc_refresh = true;
 			break;
 		case NLRI_WITHDRAW:
 		case NLRI_MP_WITHDRAW:
 			nlri_ret = bgp_nlri_parse(peer, NLRI_ATTR_ARG,
 						  &nlris[i], 1);
+			if (nlris[i].safi == SAFI_RTC)
+				safi_rtc_refresh = true;
 			break;
 		default:
 			nlri_ret = BGP_NLRI_PARSE_ERROR;
@@ -2508,6 +2513,13 @@ static int bgp_update_receive(struct peer_connection *connection,
 			bgp_attr_unintern_sub(&attr);
 			return BGP_Stop;
 		}
+	}
+
+	if (safi_rtc_refresh) {
+		zlog_debug("%s: safi_rtc_refresh", __func__);
+		bgp_announce_route(peer, AFI_L2VPN, SAFI_EVPN, true);
+		bgp_announce_route(peer, AFI_IP, SAFI_MPLS_VPN, true);
+		bgp_announce_route(peer, AFI_IP6, SAFI_MPLS_VPN, true);
 	}
 
 	/* EoR checks
