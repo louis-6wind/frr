@@ -57,16 +57,13 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 	return BGP_NLRI_PARSE_OK;
 }
 
-int bgp_rtc_filter(struct peer *peer, struct attr *attr, const struct prefix *p)
+int bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom)
 {
-	struct ecommunity *ecom = bgp_attr_get_ecommunity(attr);
 	uint8_t sub_type = 0;
 	struct prefix cmp;
 	uint8_t *pnt;
 	bool rt_found = false;
-
-	if (ecom == NULL)
-		return false;
+	char *ecom_str;
 
 	/* Build prefix to compare with */
 	cmp.family = AF_RTC;
@@ -84,8 +81,11 @@ int bgp_rtc_filter(struct peer *peer, struct attr *attr, const struct prefix *p)
 
 			if (peer->rtc_plist == NULL) {
 				if (BGP_DEBUG(update, UPDATE_OUT)) {
-					zlog_debug("Filtered prefix %pFX to peer %pBP because RTC prefix-list does not exist",
-						   p, peer);
+					ecom_str = ecommunity_ecom2str(ecom,
+								       ECOMMUNITY_FORMAT_DISPLAY, 0);
+					zlog_debug("Filtered a prefix with EC(%s) to peer %pBP because RTC prefix-list does not exist",
+						   ecom_str, peer);
+					XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
 				}
 				return true;
 			}
@@ -101,8 +101,12 @@ int bgp_rtc_filter(struct peer *peer, struct attr *attr, const struct prefix *p)
 	if (!rt_found)
 		return false;
 
-	if (BGP_DEBUG(update, UPDATE_OUT))
-		zlog_debug("Filtered prefix %pFX to peer %pBP because of RTC prefix-list", p, peer);
+	if (BGP_DEBUG(update, UPDATE_OUT)) {
+		ecom_str = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
+		zlog_debug("Filtered a prefix with EC(%s) to peer %pBP because of RTC prefix-list",
+			   ecom_str, peer);
+		XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
+	}
 
 	return true;
 }

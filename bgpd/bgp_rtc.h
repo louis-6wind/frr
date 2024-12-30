@@ -15,6 +15,6 @@
 
 extern int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *packet,
 			      bool withdraw);
-extern int bgp_rtc_filter(struct peer *peer, struct attr *attr, const struct prefix *p);
+extern int bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom);
 
 #endif /* BGP_RTC_H */
