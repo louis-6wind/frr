@@ -358,7 +358,7 @@ struct stream *bpacket_reformat_for_peer(struct bpacket *pkt,
 		ecom.unit_size = ECOMMUNITY_SIZE;
 		ecom.size = ecomlen / ECOMMUNITY_SIZE;
 		ecom.val = (uint8_t *)(pkt->buffer->data + offset_ecom);
-		filtered = bgp_rtc_filter(peer, &ecom);
+		filtered = bgp_rtc_filter(peer, &ecom, false);
 		if (filtered)
 			return NULL;
 	}
