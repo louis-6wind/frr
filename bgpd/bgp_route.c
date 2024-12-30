@@ -2524,14 +2524,6 @@ bool subgroup_announce_check(struct bgp_dest *dest, struct bgp_path_info *pi,
 	    bgp_otc_egress(peer, attr))
 		return false;
 
-	/* RTC-Filtering */
-	if (peer->afc[AFI_IP][SAFI_RTC]) {
-		/* The update group should only have one peer */
-		onlypeer = SUBGRP_PFIRST(subgrp)->peer;
-		if (bgp_rtc_filter(onlypeer, attr, p))
-			return false;
-	}
-
 	if (filter->advmap.update_type == UPDATE_TYPE_WITHDRAW &&
 	    filter->advmap.aname &&
 	    route_map_lookup_by_name(filter->advmap.aname)) {
