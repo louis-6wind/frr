@@ -15171,6 +15171,8 @@ show_adj_route(struct vty *vty, struct peer *peer, struct bgp_table *table,
 				(*output_count)++;
 			}
 		} else if (type == bgp_show_adj_route_advertised) {
+			struct ecommunity *ecom;
+
 			RB_FOREACH (adj, bgp_adj_out_rb, &dest->adj_out)
 				SUBGRP_FOREACH_PEER (adj->subgroup, paf) {
 					if (paf->peer != peer || !adj->attr)
@@ -15189,6 +15191,13 @@ show_adj_route(struct vty *vty, struct peer *peer, struct bgp_table *table,
 								  rmap_name);
 
 					if (ret == RMAP_DENY) {
+						(*filtered_count)++;
+						bgp_attr_flush(&attr);
+						continue;
+					}
+
+					ecom = bgp_attr_get_ecommunity(&attr);
+					if (ecom && bgp_rtc_filter(peer, ecom, NULL) == RTC_PREFIX_DENY) {
 						(*filtered_count)++;
 						bgp_attr_flush(&attr);
 						continue;
