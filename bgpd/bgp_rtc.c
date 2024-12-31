@@ -112,38 +112,26 @@ int bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom, bool show_command
 	return true;
 }
 
-void bgp_rtc_add_static(struct bgp *bgp, struct ecommunity_val *eval, uint32_t prefixlen)
+
+static void bgp_rtc_add_static(struct bgp *bgp, struct ecommunity_val *eval, uint32_t prefixlen)
 {
+	/* TODO: Move prefix creation from eval into separate function and handle incorrect prefixlens */
 	struct prefix prefix = { 0 };
-	struct bgp_dest *dest;
 	struct bgp_static *bgp_static;
 
 	prefix.family = AF_RTC;
 	prefix.prefixlen = prefixlen;
 	prefix.u.prefix_rtc.origin_as = bgp->as;
-	memcpy(prefix.u.prefix_rtc.route_target, eval, PSIZE(prefixlen) - 4);
-	dest = bgp_node_get(bgp->route[AFI_IP][SAFI_RTC], &prefix);
-
-	if (bgp_dest_has_bgp_path_info_data(dest)) {
-		bgp_dest_unlock_node(dest);
-		return;
+	if (prefixlen >= 32) {
+		memcpy(prefix.u.prefix_rtc.route_target, eval, PSIZE(prefixlen) - 4);
 	}
 
 	bgp_static = bgp_static_new();
-	bgp_static->backdoor = 0;
-	bgp_static->valid = 0;
-	bgp_static->igpmetric = 0;
-	bgp_static->igpnexthop.s_addr = INADDR_ANY;
-	bgp_static->label = MPLS_INVALID_LABEL;
-	bgp_static->label_index = BGP_INVALID_LABEL_INDEX;
-
-	bgp_dest_set_bgp_static_info(dest, bgp_static);
-
-	bgp_static->valid = 1;
 	bgp_static_update(bgp, &prefix, bgp_static, AFI_IP, SAFI_RTC);
 }
 
-void bgp_rtc_remove_static(struct bgp *bgp, struct ecommunity_val *eval, uint32_t prefixlen)
+/* Adaption of bgp_static_withdraw */
+static void bgp_rtc_remove_static(struct bgp *bgp, struct ecommunity_val *eval, uint32_t prefixlen)
 {
 	struct prefix prefix = { 0 };
 	struct bgp_dest *dest;
@@ -166,7 +154,6 @@ void bgp_rtc_remove_static(struct bgp *bgp, struct ecommunity_val *eval, uint32_
 
 	bgp_dest_set_bgp_static_info(dest, NULL);
 	bgp_dest_unlock_node(dest);
-	bgp_dest_unlock_node(dest);
 }
 
 int bgp_rtc_static_from_str(struct vty *vty, struct bgp *bgp, const char *str, bool add)
@@ -187,9 +174,10 @@ int bgp_rtc_static_from_str(struct vty *vty, struct bgp *bgp, const char *str, b
 			return CMD_WARNING_CONFIG_FAILED;
 		}
 	} else {
+		plen = (uint8_t)atoi(++pnt);
 		cp = XMALLOC(MTYPE_TMP, (pnt - str) + 1);
-		memcpy(cp, str, pnt - str);
-		*(cp + (pnt - str)) = '\0';
+		memcpy(cp, str, pnt - str - 1);
+		*(cp + (pnt - str) - 1) = '\0';
 		ecom = ecommunity_str2com(cp, ECOMMUNITY_ROUTE_TARGET, 0);
 
 		XFREE(MTYPE_TMP, cp);
@@ -200,8 +188,7 @@ int bgp_rtc_static_from_str(struct vty *vty, struct bgp *bgp, const char *str, b
 		}
 
 		/* Get prefix length. */
-		plen = (uint8_t)atoi(++pnt);
-		if (plen > BGP_RTC_MAX_PREFIXLEN) {
+		if (plen != 0 && (plen < 32 || plen > BGP_RTC_MAX_PREFIXLEN)) {
 			ecommunity_free(&ecom);
 			vty_out(vty, "%% Invalid prefix length %d\n", plen);
 			return CMD_WARNING_CONFIG_FAILED;
