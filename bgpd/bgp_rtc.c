@@ -17,6 +17,7 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 		struct prefix p = { 0 };
 
 		p.prefixlen = *pnt++;
+		/* TODO: Correctly handle prefixlen == 0 */
 		if (p.prefixlen > BGP_RTC_MAX_PREFIXLEN || p.prefixlen < 32) {
 			zlog_err("SAFI_RTC parse error. Invalid prefixlen: %u", p.prefixlen);
 			return BGP_NLRI_PARSE_ERROR;
