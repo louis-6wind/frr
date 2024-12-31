@@ -113,7 +113,7 @@ int bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom, bool show_command
 }
 
 
-static void bgp_rtc_add_static(struct bgp *bgp, struct ecommunity_val *eval, uint32_t prefixlen)
+static void bgp_rtc_add_static(struct bgp *bgp, struct ecommunity_val *eval, uint16_t prefixlen)
 {
 	/* TODO: Move prefix creation from eval into separate function and handle incorrect prefixlens */
 	struct prefix prefix = { 0 };
@@ -131,7 +131,7 @@ static void bgp_rtc_add_static(struct bgp *bgp, struct ecommunity_val *eval, uin
 }
 
 /* Adaption of bgp_static_withdraw */
-static void bgp_rtc_remove_static(struct bgp *bgp, struct ecommunity_val *eval, uint32_t prefixlen)
+static void bgp_rtc_remove_static(struct bgp *bgp, struct ecommunity_val *eval, uint16_t prefixlen)
 {
 	struct prefix prefix = { 0 };
 	struct bgp_dest *dest;
