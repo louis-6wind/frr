@@ -131,7 +131,7 @@ static void bgp_rtc_add_static(struct bgp *bgp, struct ecommunity_val *eval, uin
 }
 
 /* Adaption of bgp_static_update */
-void bgp_rtc_add_dynamic(struct bgp *bgp, struct ecommunity_val *eval, uint32_t prefixlen)
+void bgp_rtc_add_ecommunity_val_dynamic(struct bgp *bgp, struct ecommunity_val *eval)
 {
 	struct bgp_dest *dest;
 	struct bgp_path_info *pi;
@@ -141,9 +141,9 @@ void bgp_rtc_add_dynamic(struct bgp *bgp, struct ecommunity_val *eval, uint32_t 
 	struct prefix prefix = { 0 };
 
 	prefix.family = AF_RTC;
-	prefix.prefixlen = prefixlen;
+	prefix.prefixlen = BGP_RTC_MAX_PREFIXLEN;
 	prefix.u.prefix_rtc.origin_as = bgp->as;
-	memcpy(prefix.u.prefix_rtc.route_target, eval, PSIZE(prefixlen) - 4);
+	memcpy(prefix.u.prefix_rtc.route_target, eval, PSIZE(BGP_RTC_MAX_PREFIXLEN) - 4);
 	afi_t afi = AFI_IP;
 	safi_t safi = SAFI_RTC;
 
@@ -221,19 +221,18 @@ static void bgp_rtc_remove_static(struct bgp *bgp, struct ecommunity_val *eval, 
 	bgp_dest_unlock_node(dest);
 }
 
-void bgp_rtc_remove_dynamic(struct bgp *bgp, struct ecommunity_val *eval, uint32_t prefixlen)
+void bgp_rtc_remove_ecommunity_val_dynamic(struct bgp *bgp, struct ecommunity_val *eval)
 {
 	struct bgp_dest *dest;
 	struct bgp_path_info *pi;
 	afi_t afi = AFI_IP;
 	safi_t safi = SAFI_RTC;
-
 	struct prefix prefix = { 0 };
 
 	prefix.family = AF_RTC;
-	prefix.prefixlen = prefixlen;
+	prefix.prefixlen = BGP_RTC_MAX_PREFIXLEN;
 	prefix.u.prefix_rtc.origin_as = bgp->as;
-	memcpy(prefix.u.prefix_rtc.route_target, eval, PSIZE(prefixlen) - 4);
+	memcpy(prefix.u.prefix_rtc.route_target, eval, PSIZE(BGP_RTC_MAX_PREFIXLEN) - 4);
 
 	dest = bgp_afi_node_get(bgp->rib[afi][safi], afi, safi, &prefix, NULL);
 
