@@ -4316,8 +4316,10 @@ void bgp_packet_mpattr_prefix(struct stream *s, afi_t afi, safi_t safi,
 		break;
 	case SAFI_RTC:
 		stream_putc(s, p->prefixlen);
-		stream_putl(s, p->u.prefix_rtc.origin_as);
-		stream_put(s, &p->u.prefix_rtc.route_target, PSIZE(p->prefixlen) - 4);
+		if (p->prefixlen != 0) {
+			stream_putl(s, p->u.prefix_rtc.origin_as);
+			stream_put(s, &p->u.prefix_rtc.route_target, PSIZE(p->prefixlen) - 4);
+		}
 		break;
 	}
 }
@@ -4334,9 +4336,7 @@ size_t bgp_packet_mpattr_prefix_size(afi_t afi, safi_t safi,
 		break;
 	case SAFI_UNICAST:
 	case SAFI_MULTICAST:
-		break;
 	case SAFI_RTC:
-		size = p->prefixlen;
 		break;
 	case SAFI_MPLS_VPN:
 		size += 88;
