@@ -177,7 +177,7 @@ void bgp_rtc_add_dynamic(struct bgp *bgp, struct ecommunity_val *eval, uint32_t 
 	/* Make new BGP info. */
 	new = info_make(ZEBRA_ROUTE_BGP, BGP_ROUTE_NORMAL, 0, bgp->peer_self, attr_new, dest);
 
-	bgp_nexthop_reachability_check(afi, safi, new, &prefix, dest, bgp, bgp);
+	bgp_path_info_set_flag(dest, new, BGP_PATH_VALID);
 
 	/* Aggregate address increment. */
 	bgp_aggregate_increment(bgp, &prefix, new, afi, safi);
