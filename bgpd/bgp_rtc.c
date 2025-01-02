@@ -255,6 +255,22 @@ void bgp_rtc_remove_ecommunity_val_dynamic(struct bgp *bgp, struct ecommunity_va
 	bgp_dest_unlock_node(dest);
 }
 
+void bgp_rtc_add_remove_ecommunity_dynamic(struct bgp *bgp, struct ecommunity *ecom, bool add)
+{
+	uint8_t *p;
+	uint32_t c;
+
+	if (!ecom)
+		return;
+
+	for (c = 0, p = ecom->val; c < ecom->size; p += ecom->unit_size, c++) {
+		if (add)
+			bgp_rtc_add_ecommunity_val_dynamic(bgp, (struct ecommunity_val *)p);
+		else
+			bgp_rtc_remove_ecommunity_val_dynamic(bgp, (struct ecommunity_val *)p);
+	}
+}
+
 int bgp_rtc_static_from_str(struct vty *vty, struct bgp *bgp, const char *str, bool add)
 {
 	struct ecommunity *ecom = NULL;

@@ -10338,18 +10338,24 @@ DEFPY (af_rt_vpn_imexport,
 
 		vpn_leak_prechange(dir, afi, bgp_get_default(), bgp);
 
+		/* Remove previous ecommunity values */
+		if (bgp->vpn_policy[afi].rtlist[dir]) {
+			if (dir == BGP_VPN_POLICY_DIR_FROMVPN)
+				bgp_rtc_add_remove_ecommunity_dynamic(bgp_get_default(),
+								      bgp->vpn_policy[afi].rtlist[dir],
+								      false);
+			ecommunity_free(&bgp->vpn_policy[afi].rtlist[dir]);
+		}
+
 		if (yes) {
-			if (bgp->vpn_policy[afi].rtlist[dir])
-				ecommunity_free(
-						&bgp->vpn_policy[afi].rtlist[dir]);
 			bgp->vpn_policy[afi].rtlist[dir] =
 				ecommunity_dup(ecom);
-		} else {
-			if (bgp->vpn_policy[afi].rtlist[dir])
-				ecommunity_free(
-						&bgp->vpn_policy[afi].rtlist[dir]);
+			if (dir == BGP_VPN_POLICY_DIR_FROMVPN)
+				bgp_rtc_add_remove_ecommunity_dynamic(bgp_get_default(),
+								      bgp->vpn_policy[afi].rtlist[dir],
+								      true);
+		} else
 			bgp->vpn_policy[afi].rtlist[dir] = NULL;
-		}
 
 		vpn_leak_postchange(dir, afi, bgp_get_default(), bgp);
 	}
