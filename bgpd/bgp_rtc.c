@@ -191,6 +191,76 @@ void bgp_rtc_remove_ecommunity_val_dynamic(struct bgp *bgp, struct ecommunity_va
 	bgp_dest_unlock_node(dest);
 }
 
+void bgp_rtc_update_vpn_policy_ecommunity_dynamic(struct bgp *bgp, afi_t afi,
+						  struct ecommunity *old_ecom,
+						  struct ecommunity *new_ecom)
+{
+	afi_t afi_iter;
+	uint8_t *pnt, *pnt_iter;
+	uint32_t i, j;
+	struct bgp *bgp_iter;
+	struct listnode *node;
+	struct ecommunity *ecom_iter;
+	bool rt_used;
+
+	if (!bgp_get_default())
+		return;
+
+	if (old_ecom) {
+		/* Withdraw the previous values that are not present:
+		 * - in the new values
+		 * - in any other BGP instance
+		 */
+		for (i = 0, pnt = old_ecom->val; i < old_ecom->size;
+		     pnt += old_ecom->unit_size, i++) {
+			if (new_ecom) {
+				/* Check if the value if present in the new set */
+				rt_used = false;
+				for (j = 0, pnt_iter = new_ecom->val; j < new_ecom->size;
+				     pnt_iter += new_ecom->unit_size, j++) {
+					if (!memcmp(pnt_iter, pnt, new_ecom->unit_size)) {
+						rt_used = true;
+						break;
+					}
+				}
+
+				if (rt_used)
+					continue;
+			}
+
+			/* Check if the value if present in any other BGP instance */
+			rt_used = false;
+			for (ALL_LIST_ELEMENTS_RO(bm->bgp, node, bgp_iter)) {
+				for (afi_iter = AFI_IP; afi_iter <= AFI_IP6; ++afi_iter) {
+					if (bgp_iter == bgp && afi_iter == afi)
+						continue;
+					ecom_iter = bgp_iter->vpn_policy[afi_iter]
+							    .rtlist[BGP_VPN_POLICY_DIR_FROMVPN];
+					if (!ecom_iter)
+						continue;
+					for (j = 0, pnt_iter = ecom_iter->val; j < ecom_iter->size;
+					     pnt_iter += ecom_iter->unit_size, j++) {
+						if (!memcmp(pnt_iter, pnt, ecom_iter->unit_size)) {
+							rt_used = true;
+							break;
+						}
+					}
+				}
+			}
+			if (!rt_used)
+				bgp_rtc_remove_ecommunity_val_dynamic(bgp_get_default(),
+								      (struct ecommunity_val *)pnt);
+		}
+	}
+
+	if (new_ecom) {
+		/* Add new RT values */
+		for (i = 0, pnt = new_ecom->val; i < new_ecom->size; pnt += new_ecom->unit_size, i++)
+			bgp_rtc_add_ecommunity_val_dynamic(bgp_get_default(),
+							   (struct ecommunity_val *)pnt);
+	}
+}
+
 int bgp_rtc_static_from_str(struct vty *vty, struct bgp *bgp, const char *str, bool add)
 {
 	struct prefix prefix = {};
