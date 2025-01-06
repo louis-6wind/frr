@@ -1474,15 +1474,18 @@ int prefix_bgp_rtc_set(char *name, struct prefix *p, int permit, int set)
 {
 	struct prefix_list *plist;
 	struct prefix_list_entry *pentry;
+	struct prefix np;
 
+	prefix_copy(&np, p);
+	np.u.prefix_rtc.flags = 1;
 
 	plist = prefix_list_get(AFI_IP, 0, 1, name);
 	if (!plist)
 		return CMD_WARNING_CONFIG_FAILED;
 
 	if (set) {
-		pentry = prefix_list_entry_make(p, (permit ? PREFIX_PERMIT : PREFIX_DENY), -1, 0, 0,
-						false);
+		pentry = prefix_list_entry_make(&np, (permit ? PREFIX_PERMIT : PREFIX_DENY), -1, 0,
+						0, false);
 
 		if (prefix_entry_dup_check(plist, pentry)) {
 			prefix_list_entry_free(pentry);
@@ -1490,8 +1493,8 @@ int prefix_bgp_rtc_set(char *name, struct prefix *p, int permit, int set)
 		}
 		prefix_list_entry_add(plist, pentry);
 	} else {
-		pentry = prefix_list_entry_lookup(plist, p, (permit ? PREFIX_PERMIT : PREFIX_DENY),
-						  -1, 0, 0);
+		pentry = prefix_list_entry_lookup(plist, &np,
+						  (permit ? PREFIX_PERMIT : PREFIX_DENY), -1, 0, 0);
 
 		if (!pentry)
 			return CMD_WARNING_CONFIG_FAILED;

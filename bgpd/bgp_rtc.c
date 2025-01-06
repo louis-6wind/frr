@@ -39,19 +39,20 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 
 		memcpy(&p.u.prefix_rtc.route_target, pnt + 4, psize - 4);
 
-		if (withdraw) {
-			if (prefix_bgp_rtc_set(peer->host, &p, PREFIX_PERMIT, 0))
-				zlog_info("Withdrawn prefix %pFX is not in RTC prefix-list", &p);
-
+		if (withdraw || peer->as == peer->bgp->as) {
+			/* (Un)set prefix-list for internal peers.
+			 * Prefixes from external peers are added if needed into prefix-list
+			 * after best path computation */
+			prefix_bgp_rtc_set(peer->host, &p, PREFIX_PERMIT, !withdraw);
 			peer->rtc_plist = prefix_list_get(AFI_IP, 0, 1, peer->host);
+		}
+
+		if (withdraw)
 			bgp_withdraw(peer, &p, 0, packet->afi, packet->safi, ZEBRA_ROUTE_BGP,
 				     BGP_ROUTE_NORMAL, NULL, NULL, 0);
-		} else {
-			prefix_bgp_rtc_set(peer->host, &p, PREFIX_PERMIT, 1);
-			peer->rtc_plist = prefix_list_get(AFI_IP, 0, 1, peer->host);
+		else
 			bgp_update(peer, &p, 0, attr, packet->afi, packet->safi, ZEBRA_ROUTE_BGP,
 				   BGP_ROUTE_NORMAL, NULL, NULL, 0, 0, NULL);
-		}
 	}
 
 	return BGP_NLRI_PARSE_OK;
@@ -94,8 +95,13 @@ int bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom, bool show_command
 			memcpy(&cmp.u.prefix_rtc.route_target, ecom->val + (i * ecom->unit_size),
 			       ECOMMUNITY_SIZE);
 			if (prefix_list_apply_ext(peer->rtc_plist, NULL, &cmp, true) ==
-			    PREFIX_PERMIT)
+			    PREFIX_PERMIT) {
+				ecom_str = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
+				zlog_debug("Accepted a prefix with EC(%s) to peer %pBP because of RTC prefix-list: case 0",
+					   ecom_str, peer);
+				XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
 				return false;
+			}
 		}
 	}
 
