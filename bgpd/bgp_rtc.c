@@ -69,7 +69,6 @@ int bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom, bool show_command
 	/* Build prefix to compare with */
 	cmp.family = AF_RTC;
 	cmp.prefixlen = BGP_RTC_MAX_PREFIXLEN;
-	cmp.u.prefix_rtc.origin_as = peer->as;
 
 	for (uint32_t i = 0; i < ecom->size; i++) {
 		/* Retrieve value field */
@@ -93,9 +92,28 @@ int bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom, bool show_command
 
 			memcpy(&cmp.u.prefix_rtc.route_target, ecom->val + (i * ecom->unit_size),
 			       ECOMMUNITY_SIZE);
+			cmp.u.prefix_rtc.origin_as = 0;
 			if (prefix_list_apply_ext(peer->rtc_plist, NULL, &cmp, true) ==
-			    PREFIX_PERMIT)
+			    PREFIX_PERMIT) {
+				ecom_str = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
+				zlog_debug("Accepted a prefix with EC(%s) to peer %pBP because of RTC prefix-list: case 0",
+					   ecom_str, peer);
+				XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
 				return false;
+			}
+
+			if (peer->as == peer->bgp->as) {
+				cmp.u.prefix_rtc.origin_as = peer->as;
+				if (prefix_list_apply_ext(peer->rtc_plist, NULL, &cmp, true) ==
+				    PREFIX_PERMIT) {
+					ecom_str = ecommunity_ecom2str(ecom,
+								       ECOMMUNITY_FORMAT_DISPLAY, 0);
+					zlog_debug("Accepted a prefix with EC(%s) to peer %pBP because of RTC prefix-list: case AS",
+						   ecom_str, peer);
+					XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
+					return false;
+				}
+			}
 		}
 	}
 

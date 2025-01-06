@@ -3942,6 +3942,33 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 		group_announce_route(bgp, afi, SAFI_LABELED_UNICAST, dest,
 				     new_select);
 
+	if (safi == SAFI_RTC && old_select != new_select) {
+		/* add / remove rt in plist */
+		const struct prefix *p_dest = bgp_dest_get_prefix(dest);
+		struct prefix p;
+
+		prefix_copy(&p, p_dest);
+		p.u.prefix_rtc.origin_as = 0;
+
+		for (struct bgp_path_info *pi = old_select; pi; pi = pi->next) {
+			if (pi->peer->as != bgp->as && CHECK_FLAG(pi->flags, BGP_PATH_VALID) &&
+			    CHECK_FLAG(pi->flags, BGP_PATH_SELECTED)) {
+				prefix_bgp_rtc_set(pi->peer->host, &p, PREFIX_PERMIT, 0);
+				pi->peer->rtc_plist = prefix_list_get(AFI_IP, 0, 1, pi->peer->host);
+			}
+		}
+
+		for (struct bgp_path_info *pi = new_select; pi; pi = pi->next) {
+			zlog_info("Adding prefix %pFX: dest %p has pi peer %pBP valid %u selected %u",
+				  &p, dest, pi->peer, !!CHECK_FLAG(pi->flags, BGP_PATH_VALID),
+				  !!CHECK_FLAG(pi->flags, BGP_PATH_SELECTED));
+			if (pi->peer->as != bgp->as && CHECK_FLAG(pi->flags, BGP_PATH_VALID) &&
+			    CHECK_FLAG(pi->flags, BGP_PATH_SELECTED)) {
+				prefix_bgp_rtc_set(pi->peer->host, &p, PREFIX_PERMIT, 1);
+				pi->peer->rtc_plist = prefix_list_get(AFI_IP, 0, 1, pi->peer->host);
+			}
+		}
+	}
 
 	bgp_process_evpn_route_injection(bgp, afi, safi, dest, new_select,
 					 old_select);
@@ -4001,6 +4028,16 @@ void bgp_best_path_select_defer(struct bgp *bgp, afi_t afi, safi_t safi)
 		dest = NULL;
 	}
 
+
+	if (safi == SAFI_RTC) {
+		struct peer *peer = NULL;
+		struct listnode *node = NULL;
+		for (ALL_LIST_ELEMENTS_RO(bgp->peer, node, peer)) {
+			bgp_announce_route(peer, AFI_L2VPN, SAFI_EVPN, true);
+			bgp_announce_route(peer, AFI_IP, SAFI_MPLS_VPN, true);
+			bgp_announce_route(peer, AFI_IP6, SAFI_MPLS_VPN, true);
+		}
+	}
 	/* Send EOR message when all routes are processed */
 	if (!bgp->gr_info[afi][safi].gr_deferred) {
 		bgp_send_delayed_eor(bgp);
