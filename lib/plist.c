@@ -1640,6 +1640,69 @@ int prefix_bgp_show_prefix_list(struct vty *vty, afi_t afi, char *name,
 	return plist->count;
 }
 
+int prefix_bgp_show_rtc_prefix_list(struct vty *vty, afi_t afi, struct prefix_list *plist,
+				    bool use_json)
+{
+	struct prefix_list_entry *pentry;
+	json_object *json = NULL;
+	json_object *json_prefix = NULL;
+	json_object *json_list = NULL;
+
+
+	if (!plist)
+		return 0;
+
+
+	if (!vty)
+		return plist->count;
+
+	if (use_json) {
+		json = json_object_new_object();
+		json_prefix = json_object_new_object();
+
+		json_object_int_add(json_prefix, "prefixListCounter",
+				    plist->count);
+		json_object_string_add(json_prefix, "prefixListName",
+				       plist->name);
+
+		for (pentry = plist->head; pentry; pentry = pentry->next) {
+			json_list = json_object_new_object();
+
+			json_object_int_add(json_list, "seq", pentry->seq);
+			json_object_string_add(json_list, "seqPrefixListType",
+					       prefix_list_type_str(pentry));
+
+			json_object_object_addf(json_prefix, json_list, "%pFX", &pentry->prefix);
+		}
+		if (afi == AFI_IP)
+			json_object_object_add(json, "ipPrefixList",
+					       json_prefix);
+		else
+			json_object_object_add(json, "ipv6PrefixList",
+					       json_prefix);
+
+		vty_json(vty, json);
+	} else {
+		vty_out(vty, "ip%s prefix-list %s: %d entries\n",
+			afi == AFI_IP ? "" : "v6", plist->name, plist->count);
+
+		for (pentry = plist->head; pentry; pentry = pentry->next) {
+			struct prefix *p = &pentry->prefix;
+
+			vty_out(vty, "   seq %" PRId64 " %s %pFX", pentry->seq,
+				prefix_list_type_str(pentry), p);
+
+			if (pentry->ge)
+				vty_out(vty, " ge %d", pentry->ge);
+			if (pentry->le)
+				vty_out(vty, " le %d", pentry->le);
+
+			vty_out(vty, "\n");
+		}
+	}
+	return plist->count;
+}
+
 static void prefix_list_reset_afi(afi_t afi, int orf, int rtc)
 {
 	struct prefix_list *plist;

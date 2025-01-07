@@ -60,6 +60,24 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 	return BGP_NLRI_PARSE_OK;
 }
 
+struct prefix_list *bgp_peer_get_rtc_plist(struct peer *peer)
+{
+	char bgp_router_id_str[INET_ADDRSTRLEN];
+
+	if (peer->rtc_plist)
+		return peer->rtc_plist;
+
+	if (!peer->remote_id.s_addr)
+		return NULL;
+
+	snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4", &peer->remote_id);
+
+	if (peer->afc_nego[AFI_IP][SAFI_RTC])
+		return prefix_list_get(AFI_IP, 0, 1, bgp_router_id_str);
+	else
+		return prefix_bgp_rtc_lookup(AFI_IP, bgp_router_id_str);
+}
+
 static void bgp_rtc_add_static(struct bgp *bgp, struct ecommunity_val *eval, uint16_t prefixlen)
 {
 	/* TODO: Move prefix creation from eval into separate function and handle incorrect prefixlens */
