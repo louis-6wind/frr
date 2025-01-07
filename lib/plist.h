@@ -72,6 +72,8 @@ extern void prefix_bgp_orf_remove_all(afi_t, char *);
 int prefix_bgp_rtc_set(char *name, struct prefix *p, int permit, int set);
 extern int prefix_bgp_show_prefix_list(struct vty *vty, afi_t afi, char *name,
 				       bool use_json);
+extern int prefix_bgp_show_rtc_prefix_list(struct vty *vty, afi_t afi, char *name,
+				bool use_json);
 
 extern struct prefix_list *prefix_list_get(afi_t afi, int orf, int rtc, const char *name);
 extern void prefix_list_delete(struct prefix_list *plist);
