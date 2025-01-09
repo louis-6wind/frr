@@ -345,8 +345,7 @@ struct stream *bpacket_reformat_for_peer(struct bpacket *pkt,
 
 	peer = PAF_PEER(paf);
 
-	if (peer->afc[AFI_IP][SAFI_RTC] &&
-	    CHECK_FLAG(pkt->arr.entries[BGP_ATTR_VEC_ECOM].flags, BPKT_ATTRVEC_FLAGS_UPDATED)) {
+	if (CHECK_FLAG(pkt->arr.entries[BGP_ATTR_VEC_ECOM].flags, BPKT_ATTRVEC_FLAGS_UPDATED)) {
 		vec = &pkt->arr.entries[BGP_ATTR_VEC_ECOM];
 		ecomflags = stream_getc_from(pkt->buffer, vec->offset);
 		if (CHECK_FLAG(ecomflags, BGP_ATTR_FLAG_EXTLEN)) {

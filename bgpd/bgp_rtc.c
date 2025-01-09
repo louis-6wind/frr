@@ -11,6 +11,7 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 {
 	uint8_t *pnt = packet->nlri;
 	uint8_t *lim = packet->nlri + packet->length;
+	char bgp_router_id_str[INET_ADDRSTRLEN];
 	int psize = 0;
 
 	/* Iterate over all received prefixes */
@@ -43,8 +44,10 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 			/* (Un)set prefix-list for internal peers.
 			 * Prefixes from external peers are added if needed into prefix-list
 			 * after best path computation */
-			prefix_bgp_rtc_set(peer->host, &p, PREFIX_PERMIT, !withdraw);
-			peer->rtc_plist = prefix_list_get(AFI_IP, 0, 1, peer->host);
+			snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4",
+				   &peer->remote_id);
+			prefix_bgp_rtc_set(bgp_router_id_str, &p, PREFIX_PERMIT, !withdraw);
+			peer->rtc_plist = prefix_bgp_rtc_lookup(AFI_IP, bgp_router_id_str);
 		}
 
 		if (withdraw)
@@ -58,6 +61,24 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 	return BGP_NLRI_PARSE_OK;
 }
 
+struct prefix_list *bgp_peer_get_rtc_plist(struct peer *peer)
+{
+	char bgp_router_id_str[INET_ADDRSTRLEN];
+
+	if (peer->rtc_plist)
+		return peer->rtc_plist;
+
+	if (!peer->remote_id.s_addr)
+		return NULL;
+
+	snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4", &peer->remote_id);
+
+	if (peer->afc_nego[AFI_IP][SAFI_RTC])
+		return prefix_list_get(AFI_IP, 0, 1, bgp_router_id_str);
+	else
+		return prefix_bgp_rtc_lookup(AFI_IP, bgp_router_id_str);
+}
+
 int bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom, bool show_command)
 {
 	uint8_t sub_type = 0;
@@ -66,11 +87,22 @@ int bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom, bool show_command
 	bool rt_found = false;
 	char *ecom_str;
 	bool debug = !show_command && BGP_DEBUG(update, UPDATE_OUT);
+	struct prefix_list *rtc_plist = bgp_peer_get_rtc_plist(peer);
 
 	/* Build prefix to compare with */
 	cmp.family = AF_RTC;
 	cmp.prefixlen = BGP_RTC_MAX_PREFIXLEN;
 	cmp.u.prefix_rtc.origin_as = peer->as;
+
+	if (!rtc_plist) {
+		if (debug) {
+			ecom_str = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
+			zlog_debug("Accepted a prefix with EC(%s) to peer %pBP because RTC prefix-list does not exist",
+				   ecom_str, peer);
+			XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
+		}
+		return false;
+	}
 
 	for (uint32_t i = 0; i < ecom->size; i++) {
 		/* Retrieve value field */
@@ -81,21 +113,9 @@ int bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom, bool show_command
 		if (sub_type == ECOMMUNITY_ROUTE_TARGET) {
 			rt_found = true;
 
-			if (peer->rtc_plist == NULL) {
-				if (debug) {
-					ecom_str = ecommunity_ecom2str(ecom,
-								       ECOMMUNITY_FORMAT_DISPLAY, 0);
-					zlog_debug("Filtered a prefix with EC(%s) to peer %pBP because RTC prefix-list does not exist",
-						   ecom_str, peer);
-					XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
-				}
-				return true;
-			}
-
 			memcpy(&cmp.u.prefix_rtc.route_target, ecom->val + (i * ecom->unit_size),
 			       ECOMMUNITY_SIZE);
-			if (prefix_list_apply_ext(peer->rtc_plist, NULL, &cmp, true) ==
-			    PREFIX_PERMIT) {
+			if (prefix_list_apply_ext(rtc_plist, NULL, &cmp, true) == PREFIX_PERMIT) {
 				ecom_str = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
 				zlog_debug("Accepted a prefix with EC(%s) to peer %pBP because of RTC prefix-list: case 0",
 					   ecom_str, peer);
