@@ -3706,6 +3706,7 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 	struct bgp_path_info *old_select;
 	struct bgp_path_info_pair old_and_new;
 	const struct prefix *p = bgp_dest_get_prefix(dest);
+	char bgp_router_id_str[INET_ADDRSTRLEN];
 	int debug = 0;
 
 	/*
@@ -3859,7 +3860,6 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 				bgp, bgp->rmap_def_originate_eval_timer,
 				&bgp->t_rmap_def_originate_eval);
 	}
-
 	if (safi == SAFI_RTC && old_select != new_select) {
 		/* Remove route-target constraint prefix from old_select in rtc prefix-list */
 		for (struct bgp_path_info *pi = old_select; pi; pi = pi->next) {
@@ -3868,9 +3868,12 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 				zlog_info("Removing prefix %pFX: dest %p has pi peer %pBP valid %u selected %u",
 					  p, dest, pi->peer, !!CHECK_FLAG(pi->flags, BGP_PATH_VALID),
 					  !!CHECK_FLAG(pi->flags, BGP_PATH_SELECTED));
-				prefix_bgp_rtc_set(pi->peer->host, (struct prefix *)p,
+				snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4",
+					   &pi->peer->remote_id);
+				prefix_bgp_rtc_set(bgp_router_id_str, (struct prefix *)p,
 						   PREFIX_PERMIT, 0);
-				pi->peer->rtc_plist = prefix_list_get(AFI_IP, 0, 1, pi->peer->host);
+				pi->peer->rtc_plist = prefix_bgp_rtc_lookup(AFI_IP,
+									    bgp_router_id_str);
 			}
 		}
 	}
@@ -3905,9 +3908,12 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 				zlog_info("Adding prefix %pFX: dest %p has pi peer %pBP valid %u selected %u",
 					  p, dest, pi->peer, !!CHECK_FLAG(pi->flags, BGP_PATH_VALID),
 					  !!CHECK_FLAG(pi->flags, BGP_PATH_SELECTED));
-				prefix_bgp_rtc_set(pi->peer->host, (struct prefix *)p,
+				snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4",
+					   &pi->peer->remote_id);
+				prefix_bgp_rtc_set(bgp_router_id_str, (struct prefix *)p,
 						   PREFIX_PERMIT, 1);
-				pi->peer->rtc_plist = prefix_list_get(AFI_IP, 0, 1, pi->peer->host);
+				pi->peer->rtc_plist = prefix_bgp_rtc_lookup(AFI_IP,
+									    bgp_router_id_str);
 			}
 		}
 	}
@@ -15078,8 +15084,7 @@ show_adj_route(struct vty *vty, struct peer *peer, struct bgp_table *table,
 					}
 
 					ecom = bgp_attr_get_ecommunity(&attr);
-					if (peer->afc[AFI_IP][SAFI_RTC] && ecom &&
-					    bgp_rtc_filter(peer, ecom, true)) {
+					if (ecom && bgp_rtc_filter(peer, ecom, true)) {
 						(*filtered_count)++;
 						bgp_attr_flush(&attr);
 						continue;
@@ -15591,6 +15596,7 @@ DEFUN (show_ip_bgp_neighbor_rt_constraint_plist,
 	int idx = 0;
 	struct bgp *bgp = bgp_get_default();
 	bool uj = use_json(argc, argv);
+	struct prefix_list *rtc_plist;
 
 	if (!bgp)
 		return CMD_WARNING;
@@ -15606,8 +15612,9 @@ DEFUN (show_ip_bgp_neighbor_rt_constraint_plist,
 	if (!peer)
 		return CMD_WARNING;
 
-	if (peer->rtc_plist) {
-		prefix_bgp_show_rtc_prefix_list(vty, AFI_IP, peer->host, !!uj);
+	rtc_plist = bgp_peer_get_rtc_plist(peer);
+	if (rtc_plist) {
+		prefix_bgp_show_rtc_prefix_list(vty, AFI_IP, rtc_plist, !!uj);
 	} else {
 		if (uj)
 			vty_out(vty, "{}\n");

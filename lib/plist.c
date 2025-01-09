@@ -156,6 +156,11 @@ struct prefix_list *prefix_bgp_orf_lookup(afi_t afi, const char *name)
 	return prefix_list_lookup_do(afi, 1, 0, name);
 }
 
+struct prefix_list *prefix_bgp_rtc_lookup(afi_t afi, const char *name)
+{
+	return prefix_list_lookup_do(afi, 0, 1, name);
+}
+
 static struct prefix_list *prefix_list_new(void)
 {
 	struct prefix_list *new;
@@ -1633,17 +1638,15 @@ int prefix_bgp_show_prefix_list(struct vty *vty, afi_t afi, char *name,
 	return plist->count;
 }
 
-int prefix_bgp_show_rtc_prefix_list(struct vty *vty, afi_t afi, char *name,
-				bool use_json)
+int prefix_bgp_show_rtc_prefix_list(struct vty *vty, afi_t afi, struct prefix_list *plist,
+				    bool use_json)
 {
-	struct prefix_list *plist;
 	struct prefix_list_entry *pentry;
 	json_object *json = NULL;
 	json_object *json_prefix = NULL;
 	json_object *json_list = NULL;
 
 
-	plist = prefix_list_lookup_do(afi, 0, 1, name);
 	if (!plist)
 		return 0;
 
