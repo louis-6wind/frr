@@ -2517,10 +2517,39 @@ static int bgp_update_receive(struct peer_connection *connection,
 	}
 
 	if (safi_rtc_refresh) {
+		struct bgp *bgp = NULL;
+		struct listnode *node, *nnode;
+		struct bgp_dest *pdest, *bn = NULL;
+		struct bgp_table *table = NULL;
+		struct bgp_path_info *bpi = NULL;
+		afi_t afi;
+
 		zlog_info("safi_rtc_refresh");
+
+		for (afi = AFI_IP; afi <= AFI_IP6; afi++) {
+			for (pdest = bgp_table_top(peer->bgp->rib[afi][SAFI_MPLS_VPN]); pdest; pdest = bgp_route_next(pdest)) {
+				table = bgp_dest_get_bgp_table_info(pdest);
+				if (!table)
+					continue;
+
+				for (bn = bgp_table_top(table); bn; bn = bgp_route_next(bn)) {
+					for (bpi = bgp_dest_get_bgp_path_info(bn); bpi; bpi = bpi->next)
+						bgp_path_info_set_flag(bn, bpi, BGP_PATH_ATTR_CHANGED);
+				}
+			}
+		}
+
 		bgp_announce_route(peer, AFI_L2VPN, SAFI_EVPN, true);
 		bgp_announce_route(peer, AFI_IP, SAFI_MPLS_VPN, true);
 		bgp_announce_route(peer, AFI_IP6, SAFI_MPLS_VPN, true);
+		for (ALL_LIST_ELEMENTS(bm->bgp, node, nnode, bgp)) {
+			if (bgp->inst_type != BGP_INSTANCE_TYPE_VRF)
+				continue;
+			vpn_leak_postchange(BGP_VPN_POLICY_DIR_TOVPN, AFI_IP,
+					    bgp_get_default(), bgp);
+			vpn_leak_postchange(BGP_VPN_POLICY_DIR_TOVPN, AFI_IP6,
+					    bgp_get_default(), bgp);
+		}
 	}
 
 	/* EoR checks
