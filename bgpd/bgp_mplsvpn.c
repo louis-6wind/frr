@@ -1186,7 +1186,7 @@ leak_update(struct bgp *to_bgp, struct bgp_dest *bn,
 		}
 
 		if (attrhash_cmp(bpi->attr, new_attr) && labelssame
-		    && !CHECK_FLAG(bpi->flags, BGP_PATH_REMOVED)) {
+		    && !CHECK_FLAG(bpi->flags, BGP_PATH_REMOVED) && !CHECK_FLAG(bpi->flags, BGP_PATH_ATTR_CHANGED)) {
 
 			bgp_attr_unintern(&new_attr);
 			if (debug)
