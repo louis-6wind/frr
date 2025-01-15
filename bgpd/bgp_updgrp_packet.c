@@ -341,11 +341,18 @@ struct stream *bpacket_reformat_for_peer(struct bpacket *pkt,
 	uint16_t ecomlen;
 	size_t offset_ecom;
 	struct ecommunity ecom = {};
-	bool filtered;
+	bool filtered = false;
+	afi_t afi;
+	safi_t safi;
+	size_t attrlen_pos, mp_start, mplen_pos, total_attr_len, prefix_start, prefix_end;
 
 	peer = PAF_PEER(paf);
+	afi = paf->afi;
+	safi = paf->safi;
 
-	if (CHECK_FLAG(pkt->arr.entries[BGP_ATTR_VEC_ECOM].flags, BPKT_ATTRVEC_FLAGS_UPDATED)) {
+	if ((((afi == AFI_IP || afi == AFI_IP6) && safi == SAFI_MPLS_VPN) ||
+	     (afi == AFI_L2VPN && safi == SAFI_EVPN)) &&
+	    CHECK_FLAG(pkt->arr.entries[BGP_ATTR_VEC_ECOM].flags, BPKT_ATTRVEC_FLAGS_UPDATED)) {
 		vec = &pkt->arr.entries[BGP_ATTR_VEC_ECOM];
 		ecomflags = stream_getc_from(pkt->buffer, vec->offset);
 		if (CHECK_FLAG(ecomflags, BGP_ATTR_FLAG_EXTLEN)) {
@@ -358,9 +365,65 @@ struct stream *bpacket_reformat_for_peer(struct bpacket *pkt,
 		ecom.unit_size = ECOMMUNITY_SIZE;
 		ecom.size = ecomlen / ECOMMUNITY_SIZE;
 		ecom.val = (uint8_t *)(pkt->buffer->data + offset_ecom);
+
 		filtered = bgp_rtc_filter(peer, &ecom, false);
-		if (filtered)
-			return NULL;
+		if (filtered) {
+			if ((afi == AFI_L2VPN && safi == SAFI_EVPN))
+				/* Do no support withdraw for now */
+				return NULL;
+
+			s = stream_new(pkt->buffer->endp);
+
+			bgp_packet_set_marker(s, BGP_MSG_UPDATE);
+			stream_putw(s, 0); /* unfeasible routes length */
+
+			attrlen_pos = stream_get_endp(s);
+			/* total attr length = 0 for now. reevaluate later */
+			stream_putw(s, 0);
+			mp_start = stream_get_endp(s);
+			mplen_pos = bgp_packet_mpunreach_start(s, afi, safi);
+
+			vec = &pkt->arr.entries[BGP_ATTR_VEC_MP_PREFIX_START];
+			prefix_start = vec->offset;
+			vec = &pkt->arr.entries[BGP_ATTR_VEC_MP_PREFIX_END];
+			prefix_end = vec->offset;
+
+			memcpy(&s->data[s->endp], pkt->buffer->data + prefix_start,
+			       prefix_end - prefix_start);
+
+			vec = &pkt->arr.entries[BGP_ATTR_VEC_MP_PREFIX_LABEL];
+			memset(&s->data[s->endp + vec->offset - prefix_start], 0, BGP_LABEL_BYTES);
+
+			s->endp += prefix_end - prefix_start;
+
+#define VPN_PREFIXLEN_MIN_BYTES (3 + 8) /* label + RD */
+
+			struct prefix p = {};
+
+			p.family = afi2family(afi);
+			vec = &pkt->arr.entries[BGP_ATTR_VEC_MP_PREFIX_LABEL];
+			uint8_t prefixlen = stream_getc_from(pkt->buffer, vec->offset - 1);
+			uint8_t psize = PSIZE(prefixlen);
+			p.prefixlen = prefixlen - VPN_PREFIXLEN_MIN_BYTES * 8;
+			memcpy(&p.u.val, pkt->buffer->data + vec->offset + 11,
+			       psize - VPN_PREFIXLEN_MIN_BYTES);
+
+			char *ecom_str = ecommunity_ecom2str(&ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
+			zlog_debug("%s: send rtc EC(%s) withdraw for prefix %pFX to peer %pBP",
+				   __func__, ecom_str, &p, peer);
+			XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
+
+			/* Set the mp_unreach attr's length */
+			bgp_packet_mpunreach_end(s, mplen_pos);
+
+			/* Set total path attribute length. */
+			total_attr_len = stream_get_endp(s) - mp_start;
+			stream_putw_at(s, attrlen_pos, total_attr_len);
+
+			bgp_packet_set_size(s);
+
+			return s;
+		}
 	}
 
 	s = stream_dup(pkt->buffer);
@@ -863,10 +926,15 @@ struct bpacket *subgroup_update_packet(struct update_subgroup *subgrp)
 				mpattrlen_pos = bgp_packet_mpattr_start(snlri, peer, afi, safi,
 									&mp_vecarr, adv->baa->attr);
 
-			bgp_packet_mpattr_prefix(snlri, afi, safi, dest_p, prd,
-						 label_pnt, num_labels,
-						 addpath_capable, addpath_tx_id,
-						 adv->baa->attr);
+			bpacket_attr_vec_arr_set_vec(&mp_vecarr, BGP_ATTR_VEC_MP_PREFIX_START,
+						     snlri, NULL);
+
+			bgp_packet_mpattr_prefix(snlri, afi, safi, dest_p, prd, label_pnt,
+						 num_labels, addpath_capable, addpath_tx_id,
+						 adv->baa->attr, &mp_vecarr);
+
+			bpacket_attr_vec_arr_set_vec(&mp_vecarr, BGP_ATTR_VEC_MP_PREFIX_END, snlri,
+						     NULL);
 		}
 
 		num_pfx++;
