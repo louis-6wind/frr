@@ -121,7 +121,7 @@ enum rtc_prefix_list_type bgp_rtc_filter(struct peer *peer, struct ecommunity *e
 	if (!rtc_plist) {
 		if (debug) {
 			ecom_str = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
-			zlog_debug("Accepted %p with EC(%s) to peer %pBP because RTC prefix-list does not exist",
+			zlog_debug("Accepted %pFX with EC(%s) to peer %pBP because RTC prefix-list does not exist",
 				   p, ecom_str, peer);
 			XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
 		}
