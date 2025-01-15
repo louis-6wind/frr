@@ -44,6 +44,8 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 			/* (Un)set prefix-list for internal peers.
 			 * Prefixes from external peers are added if needed into prefix-list
 			 * after best path computation */
+			zlog_info("%sing prefix %pFX: peer %pBP",
+				  withdraw ? "Remov" : "Add", &p, peer);
 			snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4",
 				   &peer->remote_id);
 			prefix_bgp_rtc_set(bgp_router_id_str, &p, PREFIX_PERMIT, !withdraw);

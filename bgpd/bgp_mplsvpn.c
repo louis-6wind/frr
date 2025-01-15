@@ -2100,7 +2100,8 @@ void vpn_leak_from_vrf_update_all(struct bgp *to_bgp, struct bgp *from_bgp,
 	     bn = bgp_route_next(bn)) {
 
 		if (debug)
-			zlog_debug("%s: node=%p", __func__, bn);
+			zlog_debug("%s: node=%p %pFX", __func__, bn, &bn->rn->p);
+
 
 		for (bpi = bgp_dest_get_bgp_path_info(bn); bpi;
 		     bpi = bpi->next) {

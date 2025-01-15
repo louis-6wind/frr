@@ -2517,6 +2517,7 @@ static int bgp_update_receive(struct peer_connection *connection,
 	}
 
 	if (safi_rtc_refresh) {
+		zlog_info("safi_rtc_refresh");
 		bgp_announce_route(peer, AFI_L2VPN, SAFI_EVPN, true);
 		bgp_announce_route(peer, AFI_IP, SAFI_MPLS_VPN, true);
 		bgp_announce_route(peer, AFI_IP6, SAFI_MPLS_VPN, true);
