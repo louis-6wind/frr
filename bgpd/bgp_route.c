@@ -748,6 +748,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 	bool new_origin, exist_origin;
 	struct bgp_path_info *bpi_ultimate;
 	struct peer *peer_new, *peer_exist;
+	bool new_rr_client, exist_rr_client;
 
 	bgp->bestpath_runs++;
 
@@ -977,7 +978,39 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		}
 	}
 
-	/* 1. Weight check. */
+	/* 1. Route-target constraint route-reflector client */
+	if (afi == AFI_IP && safi == SAFI_RTC) {
+		/* rfc4684 section-3.2
+		 * ii.  When advertising an RT membership NLRI to a non-client peer, if
+		 *	the best path as selected by the path selection procedure
+		 *	described in Section 9.1 of the base BGP specification [4] is a
+		 *	route received from a non-client peer, and if there is an
+		 *	alternative path to the same destination from a client, the
+		 *	attributes of the client path are advertised to the peer.
+		 */
+		new_rr_client = CHECK_FLAG(new->peer->af_flags[AFI_IP][SAFI_RTC],
+					   PEER_FLAG_REFLECTOR_CLIENT);
+		exist_rr_client = CHECK_FLAG(exist->peer->af_flags[AFI_IP][SAFI_RTC],
+					     PEER_FLAG_REFLECTOR_CLIENT);
+
+		if (new_rr_client && !exist_rr_client) {
+			*reason = bgp_path_selection_rtc_rr_client;
+			if (debug)
+				zlog_debug("%s: %s wins over %s due to route-target constraint reflector client preference",
+					   pfx_buf, new_buf, exist_buf);
+			return 1;
+		}
+
+		if (!new_rr_client && exist_rr_client) {
+			*reason = bgp_path_selection_rtc_rr_client;
+			if (debug)
+				zlog_debug("%s: %s loses to %s due to route-target constraint reflector client preference",
+					   pfx_buf, new_buf, exist_buf);
+			return 0;
+		}
+	}
+
+	/* 2. Weight check. */
 	new_weight = newattr->weight;
 	exist_weight = existattr->weight;
 
@@ -999,7 +1032,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		return 0;
 	}
 
-	/* 2. Local preference check. */
+	/* 3. Local preference check. */
 	new_pref = exist_pref = bgp->default_local_pref;
 
 	if (CHECK_FLAG(newattr->flag, ATTR_FLAG_BIT(BGP_ATTR_LOCAL_PREF)))
@@ -1070,7 +1103,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		}
 	}
 
-	/* 3. Local route check. We prefer:
+	/* 4. Local route check. We prefer:
 	 *  - BGP_ROUTE_STATIC
 	 *  - BGP_ROUTE_AGGREGATE
 	 *  - BGP_ROUTE_REDISTRIBUTE
@@ -1095,7 +1128,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		return 0;
 	}
 
-	/* 3.5. Tie-breaker - AIGP (Metric TLV) attribute */
+	/* 4.5. Tie-breaker - AIGP (Metric TLV) attribute */
 	if (CHECK_FLAG(newattr->flag, ATTR_FLAG_BIT(BGP_ATTR_AIGP)) &&
 	    CHECK_FLAG(existattr->flag, ATTR_FLAG_BIT(BGP_ATTR_AIGP)) &&
 	    CHECK_FLAG(bgp->flags, BGP_FLAG_COMPARE_AIGP)) {
@@ -1133,7 +1166,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 	newattr = new->attr;
 	existattr = exist->attr;
 
-	/* 4. AS path length check. */
+	/* 5. AS path length check. */
 	if (!CHECK_FLAG(bgp->flags, BGP_FLAG_ASPATH_IGNORE)) {
 		int exist_hops = aspath_count_hops(existattr->aspath);
 
@@ -1190,7 +1223,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		}
 	}
 
-	/* 5. Origin check. */
+	/* 6. Origin check. */
 	if (newattr->origin < existattr->origin) {
 		*reason = bgp_path_selection_origin;
 		if (debug)
@@ -1211,7 +1244,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		return 0;
 	}
 
-	/* 6. MED check. */
+	/* 7. MED check. */
 	internal_as_route = (aspath_count_hops(newattr->aspath) == 0
 			     && aspath_count_hops(existattr->aspath) == 0);
 	confed_as_route = (aspath_count_confeds(newattr->aspath) > 0
@@ -1260,7 +1293,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 	} else
 		peer_new = new->peer;
 
-	/* 7. Peer type check. */
+	/* 8. Peer type check. */
 	new_sort = peer_new->sort;
 	exist_sort = peer_exist->sort;
 	new_sub_sort = peer_new->sub_sort;
@@ -1296,7 +1329,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		peer_sort_ret = 0;
 	}
 
-	/* 8. IGP metric check. */
+	/* 9. IGP metric check. */
 	newm = existm = 0;
 
 	if (new->extra)
@@ -1320,7 +1353,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		igp_metric_ret = 0;
 	}
 
-	/* 9. Same IGP metric. Compare the cluster list length as
+	/* 10. Same IGP metric. Compare the cluster list length as
 	   representative of IGP hops metric. Rewrite the metric value
 	   pair (newm, existm) with the cluster list length. Prefer the
 	   path with smaller cluster list length.                       */
@@ -1351,7 +1384,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		}
 	}
 
-	/* 10. confed-external vs. confed-internal */
+	/* 11. confed-external vs. confed-internal */
 	if (CHECK_FLAG(bgp->config, BGP_CONFIG_CONFEDERATION)) {
 		if (new_sort == BGP_PEER_CONFED
 		    && exist_sort == BGP_PEER_IBGP) {
@@ -1380,7 +1413,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		}
 	}
 
-	/* 11. Maximum path check. */
+	/* 12. Maximum path check. */
 	if (newm == existm) {
 		/* If one path has a label but the other does not, do not treat
 		 * them as equals for multipath
@@ -1473,7 +1506,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 	if (peer_sort_ret >= 0)
 		return peer_sort_ret;
 
-	/* 12. If both paths are external, prefer the path that was received
+	/* 13. If both paths are external, prefer the path that was received
 	   first (the oldest one).  This step minimizes route-flap, since a
 	   newer path won't displace an older one, even if it was the
 	   preferred route based on the additional decision criteria below.  */
@@ -1498,7 +1531,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		}
 	}
 
-	/* 13. Router-ID comparison. */
+	/* 14. Router-ID comparison. */
 	/* If one of the paths is "stale", the corresponding peer router-id will
 	 * be 0 and would always win over the other path. If originator id is
 	 * used for the comparison, it will decide which path is better.
@@ -1530,7 +1563,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		return 0;
 	}
 
-	/* 14. Cluster length comparison. */
+	/* 15. Cluster length comparison. */
 	new_cluster = BGP_CLUSTER_LIST_LENGTH(new->attr);
 	exist_cluster = BGP_CLUSTER_LIST_LENGTH(exist->attr);
 
@@ -1554,7 +1587,7 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 		return 0;
 	}
 
-	/* 15. Neighbor address comparison. */
+	/* 16. Neighbor address comparison. */
 	/* Do this only if neither path is "stale" as stale paths do not have
 	 * valid peer information (as the connection may or may not be up).
 	 */
@@ -9581,6 +9614,8 @@ const char *bgp_path_selection_reason2str(enum bgp_path_selection_reason reason)
 		return "Locally configured route";
 	case bgp_path_selection_neighbor_ip:
 		return "Neighbor IP";
+	case bgp_path_selection_rtc_rr_client:
+		return "Route-target constraint route-reflector client";
 	case bgp_path_selection_default:
 		return "Nothing left to compare";
 	}
