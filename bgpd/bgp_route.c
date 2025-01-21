@@ -3737,6 +3737,8 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 	struct bgp_path_info *new_select;
 	struct bgp_path_info *old_select;
 	struct bgp_path_info_pair old_and_new;
+	const struct prefix *p = bgp_dest_get_prefix(dest);
+	char bgp_router_id_str[INET_ADDRSTRLEN];
 	int debug = 0;
 
 	/*
@@ -3772,10 +3774,6 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 		bgp_start_routeadv(bgp);
 		return;
 	}
-
-#ifdef ENABLE_BGP_VNC
-	const struct prefix *p = bgp_dest_get_prefix(dest);
-#endif
 
 	debug = bgp_debug_bestpath(dest);
 	if (debug)
@@ -3895,6 +3893,24 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 				&bgp->t_rmap_def_originate_eval);
 	}
 
+	if (safi == SAFI_RTC && old_select != new_select) {
+		/* Remove route-target constraint prefix from old_select in rtc prefix-list */
+		for (struct bgp_path_info *pi = old_select; pi; pi = pi->next) {
+			if (pi->peer->as != bgp->as && CHECK_FLAG(pi->flags, BGP_PATH_VALID) &&
+			    CHECK_FLAG(pi->flags, BGP_PATH_SELECTED)) {
+				zlog_info("Removing prefix %pFX: dest %p has pi peer %pBP valid %u selected %u",
+					  p, dest, pi->peer, !!CHECK_FLAG(pi->flags, BGP_PATH_VALID),
+					  !!CHECK_FLAG(pi->flags, BGP_PATH_SELECTED));
+				snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4",
+					   &pi->peer->remote_id);
+				prefix_bgp_rtc_set(bgp_router_id_str, (struct prefix *)p,
+						   PREFIX_PERMIT, 0);
+				pi->peer->rtc_plist = prefix_bgp_rtc_lookup(AFI_IP,
+									    bgp_router_id_str);
+			}
+		}
+	}
+
 	/* TODO BMP insert rib update hook */
 	if (old_select)
 		bgp_path_info_unset_flag(dest, old_select, BGP_PATH_SELECTED);
@@ -3917,6 +3933,23 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 			  new_select);
 	}
 
+	if (safi == SAFI_RTC && old_select != new_select) {
+		/* Add route-target constraint prefix from old_select in rtc prefix-list */
+		for (struct bgp_path_info *pi = new_select; pi; pi = pi->next) {
+			if (pi->peer->as != bgp->as && CHECK_FLAG(pi->flags, BGP_PATH_VALID) &&
+			    CHECK_FLAG(pi->flags, BGP_PATH_SELECTED)) {
+				zlog_info("Adding prefix %pFX: dest %p has pi peer %pBP valid %u selected %u",
+					  p, dest, pi->peer, !!CHECK_FLAG(pi->flags, BGP_PATH_VALID),
+					  !!CHECK_FLAG(pi->flags, BGP_PATH_SELECTED));
+				snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4",
+					   &pi->peer->remote_id);
+				prefix_bgp_rtc_set(bgp_router_id_str, (struct prefix *)p,
+						   PREFIX_PERMIT, 1);
+				pi->peer->rtc_plist = prefix_bgp_rtc_lookup(AFI_IP,
+									    bgp_router_id_str);
+			}
+		}
+	}
 
 #ifdef ENABLE_BGP_VNC
 	if ((afi == AFI_IP || afi == AFI_IP6) && (safi == SAFI_UNICAST)) {

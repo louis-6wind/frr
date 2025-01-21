@@ -156,6 +156,11 @@ struct prefix_list *prefix_bgp_orf_lookup(afi_t afi, const char *name)
 	return prefix_list_lookup_do(afi, 1, 0, name);
 }
 
+struct prefix_list *prefix_bgp_rtc_lookup(afi_t afi, const char *name)
+{
+	return prefix_list_lookup_do(afi, 0, 1, name);
+}
+
 static struct prefix_list *prefix_list_new(void)
 {
 	struct prefix_list *new;
