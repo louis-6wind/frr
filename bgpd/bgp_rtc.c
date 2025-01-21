@@ -14,6 +14,7 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 {
 	uint8_t *pnt = packet->nlri;
 	uint8_t *lim = packet->nlri + packet->length;
+	char bgp_router_id_str[INET_ADDRSTRLEN];
 	int psize = 0;
 
 	/* Iterate over all received prefixes */
@@ -40,6 +41,24 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 			memcpy(&p.u.prefix_rtc.route_target, pnt + 4, psize - 4);
 
 		apply_mask(&p);
+
+		if (withdraw || peer->as == peer->bgp->as) {
+			/* RFC4684 says
+			 * "When processing RT membership NLRIs received from internal iBGP
+			 * peers, it is necessary to consider all available iBGP paths for a
+			 * given RT prefix, for building the outbound route filter, and not just
+			 * the best path."
+			 *
+			 * (Un)set prefix-list for internal peers for all received path here.
+			 *
+			 * Prefixes from external peers are added if needed into prefix-list
+			 * after best path computation. They can be deleted on withdraw now
+			 * because they cannot be selected anymore by best path computation.
+			 */
+			snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4",
+				   &peer->remote_id);
+			bgp_rtc_plist_entry_set(peer, &p, !withdraw);
+		}
 
 		if (withdraw)
 			bgp_withdraw(peer, &p, 0, packet->afi, packet->safi, ZEBRA_ROUTE_BGP,
