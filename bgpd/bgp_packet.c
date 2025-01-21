@@ -2320,6 +2320,7 @@ static int bgp_update_receive(struct peer_connection *connection,
 	bgp_size_t update_len;
 	bgp_size_t withdraw_len;
 	bool restart = false;
+	bool safi_rtc_refresh = false;
 
 	enum NLRI_TYPES {
 		NLRI_UPDATE,
@@ -2515,11 +2516,15 @@ static int bgp_update_receive(struct peer_connection *connection,
 		case NLRI_MP_UPDATE:
 			nlri_ret = bgp_nlri_parse(peer, NLRI_ATTR_ARG,
 						  &nlris[i], 0);
+			if (nlris[i].safi == SAFI_RTC)
+				safi_rtc_refresh = true;
 			break;
 		case NLRI_WITHDRAW:
 		case NLRI_MP_WITHDRAW:
 			nlri_ret = bgp_nlri_parse(peer, NLRI_ATTR_ARG,
 						  &nlris[i], 1);
+			if (nlris[i].safi == SAFI_RTC)
+				safi_rtc_refresh = true;
 			break;
 		default:
 			nlri_ret = BGP_NLRI_PARSE_ERROR;
@@ -2537,6 +2542,43 @@ static int bgp_update_receive(struct peer_connection *connection,
 							: BGP_NOTIFY_UPDATE_OPT_ATTR_ERR);
 			bgp_attr_unintern_sub(&attr);
 			return BGP_Stop;
+		}
+	}
+
+	if (safi_rtc_refresh) {
+		struct bgp *bgp = NULL;
+		struct listnode *node, *nnode;
+		struct bgp_dest *pdest, *bn = NULL;
+		struct bgp_table *table = NULL;
+		struct bgp_path_info *bpi = NULL;
+		afi_t afi;
+
+		for (afi = AFI_IP; afi <= AFI_IP6; afi++) {
+			for (pdest = bgp_table_top(peer->bgp->rib[afi][SAFI_MPLS_VPN]); pdest;
+			     pdest = bgp_route_next(pdest)) {
+				table = bgp_dest_get_bgp_table_info(pdest);
+				if (!table)
+					continue;
+
+				for (bn = bgp_table_top(table); bn; bn = bgp_route_next(bn)) {
+					for (bpi = bgp_dest_get_bgp_path_info(bn); bpi;
+					     bpi = bpi->next)
+						bgp_path_info_set_flag(bn, bpi,
+								       BGP_PATH_ATTR_CHANGED);
+				}
+			}
+		}
+
+		bgp_announce_route(peer, AFI_L2VPN, SAFI_EVPN, true);
+		bgp_announce_route(peer, AFI_IP, SAFI_MPLS_VPN, true);
+		bgp_announce_route(peer, AFI_IP6, SAFI_MPLS_VPN, true);
+		for (ALL_LIST_ELEMENTS(bm->bgp, node, nnode, bgp)) {
+			if (bgp->inst_type != BGP_INSTANCE_TYPE_VRF)
+				continue;
+			vpn_leak_postchange(BGP_VPN_POLICY_DIR_TOVPN, AFI_IP, bgp_get_default(),
+					    bgp);
+			vpn_leak_postchange(BGP_VPN_POLICY_DIR_TOVPN, AFI_IP6, bgp_get_default(),
+					    bgp);
 		}
 	}
 

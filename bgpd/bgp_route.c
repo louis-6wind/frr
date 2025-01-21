@@ -4067,6 +4067,16 @@ void bgp_best_path_select_defer(struct bgp *bgp, afi_t afi, safi_t safi)
 		dest = NULL;
 	}
 
+	if (safi == SAFI_RTC) {
+		struct peer *peer = NULL;
+		struct listnode *node = NULL;
+		for (ALL_LIST_ELEMENTS_RO(bgp->peer, node, peer)) {
+			bgp_announce_route(peer, AFI_L2VPN, SAFI_EVPN, true);
+			bgp_announce_route(peer, AFI_IP, SAFI_MPLS_VPN, true);
+			bgp_announce_route(peer, AFI_IP6, SAFI_MPLS_VPN, true);
+		}
+	}
+
 	/* Send EOR message when all routes are processed */
 	if (!bgp->gr_info[afi][safi].gr_deferred) {
 		bgp_send_delayed_eor(bgp);
