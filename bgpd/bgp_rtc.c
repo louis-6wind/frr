@@ -14,6 +14,7 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 {
 	uint8_t *pnt = packet->nlri;
 	uint8_t *lim = packet->nlri + packet->length;
+	char bgp_router_id_str[INET_ADDRSTRLEN];
 	int psize = 0;
 
 	/* Iterate over all received prefixes */
@@ -41,13 +42,21 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 
 		apply_mask(&p);
 
-		if (withdraw) {
+		if (withdraw || peer->as == peer->bgp->as) {
+			/* (Un)set prefix-list for internal peers.
+			 * Prefixes from external peers are added if needed into prefix-list
+			 * after best path computation */
+			snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4",
+				   &peer->remote_id);
+			bgp_rtc_plist_entry_set(peer, &p, !withdraw);
+		}
+
+		if (withdraw)
 			bgp_withdraw(peer, &p, 0, packet->afi, packet->safi, ZEBRA_ROUTE_BGP,
 				     BGP_ROUTE_NORMAL, NULL, NULL, 0);
-		} else {
+		else
 			bgp_update(peer, &p, 0, attr, packet->afi, packet->safi, ZEBRA_ROUTE_BGP,
 				   BGP_ROUTE_NORMAL, NULL, NULL, 0, 0, NULL);
-		}
 	}
 
 	return BGP_NLRI_PARSE_OK;
