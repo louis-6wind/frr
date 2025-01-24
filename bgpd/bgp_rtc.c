@@ -49,9 +49,12 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 			 * after best path computation */
 			snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4",
 				   &peer->remote_id);
-			if (bgp_rtc_plist_entry_set(peer, &p, !withdraw))
+			if (bgp_rtc_plist_entry_set(peer, &p, !withdraw)) {
 				/* only set update flags if the peer prefix-list has changed */
 				SET_FLAG(peer->flags, PEER_FLAG_RTC_UPDATE);
+				zlog_debug("%s: %s %pFX - request %pBP refresh DEB", __func__,
+					   withdraw ? "withdraw" : "update", &p, peer);
+			}
 		}
 
 		if (withdraw)
