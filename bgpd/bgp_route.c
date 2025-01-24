@@ -3935,9 +3935,12 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 					  !!CHECK_FLAG(pi->flags, BGP_PATH_SELECTED));
 				snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4",
 					   &pi->peer->remote_id);
-				if (bgp_rtc_plist_entry_set(pi->peer, (struct prefix *)p, false))
+				if (bgp_rtc_plist_entry_set(pi->peer, (struct prefix *)p, false)) {
 					/* only set update flags if the peer prefix-list has changed */
+					zlog_debug("%s: remove bestpath %pFX - request %pBP refresh DEB",
+						   __func__, p, pi->peer);
 					SET_FLAG(pi->peer->flags, PEER_FLAG_RTC_UPDATE);
+				}
 			}
 		}
 	}
@@ -3981,9 +3984,12 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 					  !!CHECK_FLAG(pi->flags, BGP_PATH_SELECTED));
 				snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4",
 					   &pi->peer->remote_id);
-				if (bgp_rtc_plist_entry_set(pi->peer, (struct prefix *)p, true))
+				if (bgp_rtc_plist_entry_set(pi->peer, (struct prefix *)p, true)) {
 					/* only set update flags if the peer prefix-list has changed */
+					zlog_debug("%s: add bestpath %pFX - request %pBP refresh DEB",
+						   __func__, p, pi->peer);
 					SET_FLAG(pi->peer->flags, PEER_FLAG_RTC_UPDATE);
+				}
 			}
 		}
 	}
@@ -4087,6 +4093,9 @@ void bgp_best_path_select_defer(struct bgp *bgp, afi_t afi, safi_t safi)
 	     dest && bgp->gr_info[afi][safi].gr_deferred != 0 &&
 	     cnt < BGP_MAX_BEST_ROUTE_SELECT;
 	     dest = bgp_route_next(dest)) {
+		zlog_debug("%s: p=%pBD(%s) afi=%s, safi=%s start defer %d", __func__, dest,
+			   bgp->name_pretty, afi2str(afi), safi2str(safi),
+			   !!CHECK_FLAG(dest->flags, BGP_NODE_SELECT_DEFER));
 		if (!CHECK_FLAG(dest->flags, BGP_NODE_SELECT_DEFER))
 			continue;
 
