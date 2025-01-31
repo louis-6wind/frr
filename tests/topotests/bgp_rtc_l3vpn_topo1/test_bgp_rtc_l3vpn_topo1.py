@@ -256,6 +256,7 @@ def check_bgp_convergence(step=None):
     logger.info("Check BGP IPv4/6 unicast/VPN table")
     for rname, router in tgen.routers().items():
         for ipv in [4, 6]:
+            logger.info(f"Check BGP IPv4/6 unicast/VPN table: {rname} IPv{ipv}")
             safi = "unicast" if "ce" in rname else "vpn"
             reffile = os.path.join(
                 CWD, f"{rname}/show_bgp_ipv{ipv}_{safi}{step_suffix}.json"

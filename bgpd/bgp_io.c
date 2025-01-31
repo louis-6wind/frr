@@ -149,6 +149,8 @@ static void bgp_process_writes(struct event *thread)
 		event_add_write(fpt->master, bgp_process_writes, connection,
 				connection->fd, &connection->t_write);
 	} else if (!fatal) {
+		zlog_debug("%s: schedule bgp_generate_updgrp_packets", __func__);
+
 		BGP_UPDATE_GROUP_TIMER_ON(&connection->t_generate_updgrp_packets,
 					  bgp_generate_updgrp_packets);
 	}
