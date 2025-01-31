@@ -589,7 +589,7 @@ enum bgp_path_type {
  * sub-queue 0: soo routes
  * sub-queue 1: other routes
  */
-#define MQ_SIZE 4
+#define MQ_SIZE 5
 
 /* For checking that an object has already queued in some sub-queue */
 #define MQ_BIT_MASK ((1 << MQ_SIZE) - 1)
@@ -620,10 +620,11 @@ struct bgp_rtc_eor_info {
  * Meta Q's specific names
  */
 enum meta_queue_indexes {
+	META_QUEUE_RTC_ROUTE,
+	META_QUEUE_RTC_EOR_MARKER,
 	META_QUEUE_EARLY_ROUTE,
 	META_QUEUE_OTHER_ROUTE,
 	META_QUEUE_EOIU_MARKER,
-	META_QUEUE_RTC_EOR_MARKER,
 };
 
 static inline void bgp_bump_version(struct bgp_dest *dest)
@@ -1030,6 +1031,7 @@ extern int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 extern void bgp_meta_queue_free(struct meta_queue *mq);
 extern int early_route_process(struct bgp *bgp, struct bgp_dest *dest);
 extern int other_route_process(struct bgp *bgp, struct bgp_dest *dest);
+extern int rtc_route_process(struct bgp *bgp, struct bgp_dest *dest);
 extern int eoiu_marker_process(struct bgp *bgp, struct bgp_dest *dest);
 extern int rtc_eor_marker_process(struct bgp *bgp, struct bgp_dest *dest);
 extern uint32_t bgp_med_value(struct attr *attr, struct bgp *bgp);
