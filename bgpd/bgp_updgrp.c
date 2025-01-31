@@ -2249,11 +2249,14 @@ void subgroup_trigger_write(struct update_subgroup *subgrp)
 	SUBGRP_FOREACH_PEER (subgrp, paf) {
 		struct peer_connection *connection = paf->peer->connection;
 
-		if (peer_established(connection))
+		if (peer_established(connection)) {
+			zlog_debug("%s: schedule bgp_generate_updgrp_packets", __func__);
+
 			event_add_timer_msec(bm->master,
 					     bgp_generate_updgrp_packets,
 					     connection, 0,
 					     &connection->t_generate_updgrp_packets);
+		}
 	}
 }
 

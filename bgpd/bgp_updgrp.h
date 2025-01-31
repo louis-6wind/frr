@@ -601,15 +601,26 @@ static inline uint8_t _bgp_announce_peer_set_rtc_refresh(struct peer *peer)
 		paf = peer->peer_af_array[afidx];
 		if (paf && PAF_SUBGRP(paf)) {
 			SET_FLAG(PAF_SUBGRP(paf)->flags, SUBGRP_FLAG_NEEDS_RTC_REFRESH_REQUESTED);
-			if (afidx == BGP_AF_IPV4_VPN)
+			zlog_debug("DEBFLAG %pBP set SUBGRP_FLAG_NEEDS_RTC_REFRESH_REQUESTED u%" PRIu64
+				   ":s%" PRIu64 " %s",
+				   peer, PAF_SUBGRP(paf)->update_group->id, PAF_SUBGRP(paf)->id,
+				   __func__);
+			if (afidx == BGP_AF_IPV4_VPN) {
 				SET_FLAG(peer->af_flags[AFI_IP][SAFI_MPLS_VPN],
 					 PEER_FLAG_AF_RTC_UPDATE);
-			else if (afidx == BGP_AF_IPV6_VPN)
+				zlog_debug("DEBFLAG %pBP set PEER_FLAG_AF_RTC_UPDATE ipv4 vpn %s",
+					   peer, __func__);
+			} else if (afidx == BGP_AF_IPV6_VPN) {
 				SET_FLAG(peer->af_flags[AFI_IP6][SAFI_MPLS_VPN],
 					 PEER_FLAG_AF_RTC_UPDATE);
-			else if (afidx == BGP_AF_L2VPN_EVPN)
+				zlog_debug("DEBFLAG %pBP set PEER_FLAG_AF_RTC_UPDATE ipv6 vpn %s",
+					   peer, __func__);
+			} else if (afidx == BGP_AF_L2VPN_EVPN) {
 				SET_FLAG(peer->af_flags[AFI_L2VPN][SAFI_EVPN],
 					 PEER_FLAG_AF_RTC_UPDATE);
+				zlog_debug("DEBFLAG %pBP set PEER_FLAG_AF_RTC_UPDATE evpn %s", peer,
+					   __func__);
+			}
 
 			nb_af++;
 		}
@@ -700,7 +711,6 @@ static inline void bgp_announce_peer_unset_rtc_refresh(struct peer *peer)
 	for (ALL_LIST_ELEMENTS_RO(bgp->peer, node, peer_iter)) {
 		if (peer != peer_iter && peer->remote_id.s_addr != peer_iter->remote_id.s_addr)
 			continue;
-
 		if (_bgp_announce_peer_unset_rtc_refresh(peer_iter))
 			return;
 	}
@@ -732,7 +742,15 @@ static inline void bgp_announce_peer_rtc_refresh(struct peer *peer)
 		    CHECK_FLAG(PAF_SUBGRP(paf)->flags, SUBGRP_FLAG_NEEDS_RTC_REFRESH_REQUESTED)) {
 			subgroup_announce_all(PAF_SUBGRP(paf));
 			UNSET_FLAG(PAF_SUBGRP(paf)->flags, SUBGRP_FLAG_NEEDS_RTC_REFRESH_REQUESTED);
+			zlog_debug("DEBFLAG %pBP UNset SUBGRP_FLAG_NEEDS_RTC_REFRESH_REQUESTED u%" PRIu64
+				   ":s%" PRIu64 " %s",
+				   peer, PAF_SUBGRP(paf)->update_group->id, PAF_SUBGRP(paf)->id,
+				   __func__);
 			SET_FLAG(PAF_SUBGRP(paf)->flags, SUBGRP_FLAG_NEEDS_RTC_REFRESH);
+			zlog_debug("DEBFLAG %pBP set SUBGRP_FLAG_NEEDS_RTC_REFRESH u%" PRIu64
+				   ":s%" PRIu64 " %s",
+				   peer, PAF_SUBGRP(paf)->update_group->id, PAF_SUBGRP(paf)->id,
+				   __func__);
 		}
 	}
 }
