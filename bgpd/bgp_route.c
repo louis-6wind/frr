@@ -3458,9 +3458,10 @@ void subgroup_process_announce_selected(struct update_subgroup *subgrp,
 		zlog_debug("%s: p=%pFX, selected=%p", __func__, p, selected);
 
 	/* First update is deferred until ORF or ROUTE-REFRESH is received */
-	if (onlypeer && CHECK_FLAG(onlypeer->af_sflags[afi][safi],
-				   PEER_STATUS_ORF_WAIT_REFRESH))
+	if (onlypeer && CHECK_FLAG(onlypeer->af_sflags[afi][safi], PEER_STATUS_ORF_WAIT_REFRESH)) {
+		zlog_debug("%s: p=%pFX, selected=%p return", __func__, p, selected);
 		return;
+	}
 
 	memset(&attr, 0, sizeof(attr));
 	/* It's initialized in bgp_announce_check() */
@@ -3939,6 +3940,8 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 					/* only set update flags if the peer prefix-list has changed */
 					zlog_debug("%s: remove bestpath %pFX - request %pBP refresh DEB",
 						   __func__, p, pi->peer);
+					zlog_debug("DEBFLAG %pBP set PEER_FLAG_RTC_UPDATE %s (removal)",
+						   pi->peer, __func__);
 					SET_FLAG(pi->peer->flags, PEER_FLAG_RTC_UPDATE);
 				}
 			}
@@ -3988,6 +3991,8 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 					/* only set update flags if the peer prefix-list has changed */
 					zlog_debug("%s: add bestpath %pFX - request %pBP refresh DEB",
 						   __func__, p, pi->peer);
+					zlog_debug("DEBFLAG %pBP set PEER_FLAG_RTC_UPDATE %s (addition)",
+						   pi->peer, __func__);
 					SET_FLAG(pi->peer->flags, PEER_FLAG_RTC_UPDATE);
 				}
 			}
@@ -4120,6 +4125,7 @@ void bgp_best_path_select_defer(struct bgp *bgp, afi_t afi, safi_t safi)
 				continue;
 			zlog_debug("%s: refresh %pBP DEB", __func__, peer);
 			bgp_announce_peer_set_rtc_refresh(peer);
+			zlog_debug("DEBFLAG %pBP unset PEER_FLAG_RTC_UPDATE %s", peer, __func__);
 			UNSET_FLAG(peer->flags, PEER_FLAG_RTC_UPDATE);
 		}
 		for (ALL_LIST_ELEMENTS_RO(bgp->peer, node, peer))
@@ -4189,9 +4195,9 @@ static void process_subq_early_route(struct bgp_dest *dest)
 {
 	struct bgp_table *table = bgp_dest_table(dest);
 
-	if (bgp_debug_bestpath(dest))
-		zlog_debug("%s dequeued from sub-queue %s", bgp_dest_get_prefix_str(dest),
-			   subqueue2str(META_QUEUE_EARLY_ROUTE));
+	//	if (bgp_debug_bestpath(dest))
+	zlog_debug("%s dequeued from sub-queue %s", bgp_dest_get_prefix_str(dest),
+		   subqueue2str(META_QUEUE_EARLY_ROUTE));
 
 	/* note, new DESTs may be added as part of processing */
 	bgp_process_main_one(table->bgp, dest, table->afi, table->safi);
@@ -4206,9 +4212,9 @@ static void process_subq_other_route(struct bgp_dest *dest)
 {
 	struct bgp_table *table = bgp_dest_table(dest);
 
-	if (bgp_debug_bestpath(dest))
-		zlog_debug("%s dequeued from sub-queue %s", bgp_dest_get_prefix_str(dest),
-			   subqueue2str(META_QUEUE_OTHER_ROUTE));
+	//	if (bgp_debug_bestpath(dest))
+	zlog_debug("%s dequeued from sub-queue %s", bgp_dest_get_prefix_str(dest),
+		   subqueue2str(META_QUEUE_OTHER_ROUTE));
 
 	/* note, new DESTs may be added as part of processing */
 	bgp_process_main_one(table->bgp, dest, table->afi, table->safi);
@@ -4223,9 +4229,9 @@ static void process_subq_rtc_route(struct bgp_dest *dest)
 {
 	struct bgp_table *table = bgp_dest_table(dest);
 
-	if (bgp_debug_bestpath(dest))
-		zlog_debug("%s dequeued from sub-queue %s", bgp_dest_get_prefix_str(dest),
-			   subqueue2str(META_QUEUE_RTC_ROUTE));
+	//	if (bgp_debug_bestpath(dest))
+	zlog_debug("%s dequeued from sub-queue %s", bgp_dest_get_prefix_str(dest),
+		   subqueue2str(META_QUEUE_RTC_ROUTE));
 
 	/* note, new DESTs may be added as part of processing */
 	bgp_process_main_one(table->bgp, dest, table->afi, table->safi);
@@ -4245,9 +4251,8 @@ static void process_eoiu_marker(struct bgp_dest *dest)
 		return;
 	}
 
-	if (BGP_DEBUG(update, UPDATE_IN))
-		zlog_debug("EOIU Marker dequeued from sub-queue %s",
-			   subqueue2str(META_QUEUE_EOIU_MARKER));
+	//	if (BGP_DEBUG(update, UPDATE_IN))
+	zlog_debug("EOIU Marker dequeued from sub-queue %s", subqueue2str(META_QUEUE_EOIU_MARKER));
 
 	bgp_process_main_one(info->bgp, NULL, 0, 0);
 
@@ -4278,6 +4283,7 @@ static void process_rtc_eor_marker(struct bgp_dest *dest)
 			continue;
 		zlog_debug("%s: refresh %pBP DEB", __func__, peer);
 		bgp_announce_peer_set_rtc_refresh(peer);
+		zlog_debug("DEBFLAG %pBP unset PEER_FLAG_RTC_UPDATE %s", peer, __func__);
 		UNSET_FLAG(peer->flags, PEER_FLAG_RTC_UPDATE);
 	}
 	for (ALL_LIST_ELEMENTS_RO(info->bgp->peer, node, peer))
