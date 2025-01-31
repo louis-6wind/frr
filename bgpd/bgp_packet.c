@@ -450,12 +450,13 @@ void bgp_generate_updgrp_packets(struct event *thread)
 	struct peer_connection *connection = EVENT_ARG(thread);
 	struct peer *peer = connection->peer;
 	struct stream *s;
-	struct peer_af *paf;
+	struct peer_af *paf, *paf_iter;
 	struct bpacket *next_pkt;
 	uint32_t wpq;
 	uint32_t generated = 0;
 	afi_t afi;
 	safi_t safi;
+	bool found;
 
 	wpq = atomic_load_explicit(&peer->bgp->wpkt_quanta,
 				   memory_order_relaxed);
@@ -520,6 +521,25 @@ void bgp_generate_updgrp_packets(struct event *thread)
 			 * yet.
 			 */
 			if (!next_pkt || !next_pkt->buffer) {
+				if (CHECK_FLAG(PAF_SUBGRP(paf)->flags,
+					       SUBGRP_FLAG_NEEDS_RTC_REFRESH)) {
+					found = false;
+					UNSET_FLAG(peer->af_flags[afi][safi],
+						   PEER_FLAG_AF_RTC_UPDATE);
+
+					SUBGRP_FOREACH_PEER (PAF_SUBGRP(paf), paf_iter) {
+						if (CHECK_FLAG(paf->peer->af_flags[afi][safi],
+							       PEER_FLAG_AF_RTC_UPDATE)) {
+							found = true;
+							break;
+						}
+					}
+					bgp_announce_peer_unset_rtc_refresh(peer);
+					if (!found)
+						UNSET_FLAG(PAF_SUBGRP(paf)->flags,
+							   SUBGRP_FLAG_NEEDS_RTC_REFRESH);
+				}
+
 				if (!paf->t_announce_route) {
 					/* Make sure we supress BGP UPDATES
 					 * for normal processing later again.
