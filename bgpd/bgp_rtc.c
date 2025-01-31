@@ -68,9 +68,14 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 	return BGP_NLRI_PARSE_OK;
 }
 
-/* Check whether a route-target match the RTC prefix-list */
+/* Check whether a route-target match the RTC prefix-list
+ *
+ * If previous_state is true, it returns the previous matching state before the RTC
+ * prefix-list was updated.
+ */
 static enum rtc_prefix_list_type bgp_rtc_plist_entry_match(struct bgp_rtc_plist *rtc_plist,
-							   uint8_t *route_target)
+							   uint8_t *route_target,
+							   bool previous_state)
 {
 	struct bgp_rtc_plist_entry *rtc_pentry = NULL;
 	struct listnode *node;
@@ -79,6 +84,10 @@ static enum rtc_prefix_list_type bgp_rtc_plist_entry_match(struct bgp_rtc_plist 
 	uint8_t mask;
 
 	for (ALL_LIST_ELEMENTS_RO(rtc_plist->entries, node, rtc_pentry)) {
+		if (CHECK_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_NEW) && previous_state)
+			continue;
+		if (CHECK_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_REMOVE) && !previous_state)
+			continue;
 		if (rtc_pentry->prefixlen == 0 || rtc_pentry->prefixlen == 32)
 			return RTC_PREFIX_PERMIT;
 
@@ -111,8 +120,12 @@ static enum rtc_prefix_list_type bgp_rtc_plist_entry_match(struct bgp_rtc_plist 
  *
  * prefix 'p' argument is optional. If set, it enables logging when "debug bgp update out" is on.
  * Its value is displayed in the logs.
+ *
+ * If previous_state is true, it returns the previous filtering state before the RTC
+ * prefix-list was updated.
  */
-enum rtc_prefix_list_type bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom, struct prefix *p)
+enum rtc_prefix_list_type bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom,
+					 struct prefix *p, bool previous_state)
 {
 	uint8_t sub_type = 0;
 	uint8_t *pnt;
@@ -124,12 +137,15 @@ enum rtc_prefix_list_type bgp_rtc_filter(struct peer *peer, struct ecommunity *e
 	if (!rtc_plist) {
 		if (debug) {
 			ecom_str = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
-			zlog_debug("Accepted %pFX with EC(%s) to peer %pBP because RTC prefix-list does not exist",
-				   p, ecom_str, peer);
+			zlog_debug("%sAccepted %pFX with EC(%s) to peer %pBP because RTC prefix-list does not exist",
+				   previous_state ? "previous_state: " : "", p, ecom_str, peer);
 			XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
 		}
 		return RTC_PREFIX_PERMIT;
 	}
+
+	if (previous_state && CHECK_FLAG(rtc_plist->flags, RTC_PLIST_NEW))
+		return RTC_PREFIX_UNDEF;
 
 	for (uint32_t i = 0; i < ecom->size; i++) {
 		/* Retrieve value field */
@@ -140,13 +156,13 @@ enum rtc_prefix_list_type bgp_rtc_filter(struct peer *peer, struct ecommunity *e
 			continue;
 
 		rt_found = true;
-		if (bgp_rtc_plist_entry_match(rtc_plist, pnt) == RTC_PREFIX_DENY)
+		if (bgp_rtc_plist_entry_match(rtc_plist, pnt, previous_state) == RTC_PREFIX_DENY)
 			continue;
 
 		if (debug) {
 			ecom_str = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
-			zlog_debug("Accepted %pFX with EC(%s) to peer %pBP because of RTC prefix-list",
-				   p, ecom_str, peer);
+			zlog_debug("%sAccepted %pFX with EC(%s) to peer %pBP because of RTC prefix-list",
+				   previous_state ? "previous_state: " : "", p, ecom_str, peer);
 			XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
 		}
 
@@ -159,8 +175,8 @@ enum rtc_prefix_list_type bgp_rtc_filter(struct peer *peer, struct ecommunity *e
 
 	if (debug) {
 		ecom_str = ecommunity_ecom2str(ecom, ECOMMUNITY_FORMAT_DISPLAY, 0);
-		zlog_debug("Filtered %pFX with EC(%s) to peer %pBP because of RTC prefix-list", p,
-			   ecom_str, peer);
+		zlog_debug("%sFiltered %pFX with EC(%s) to peer %pBP because of RTC prefix-list",
+			   previous_state ? "previous_state: " : "", p, ecom_str, peer);
 		XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
 	}
 
@@ -499,11 +515,16 @@ static int bgp_rtc_plist_entry_add(struct bgp_rtc_plist *rtc_plist, struct prefi
 			break;
 	}
 
-	if (!rtc_pentry) {
+	if (rtc_pentry) {
+		UNSET_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_REMOVE);
+		if (list_isempty(rtc_pentry->origin_as))
+			SET_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_NEW);
+	} else {
 		rtc_pentry = bgp_rtc_plist_entry_new();
 		memcpy(rtc_pentry->route_target, &p->u.prefix_rtc.route_target,
 		       sizeof(rtc_pentry->route_target));
 		rtc_pentry->prefixlen = p->prefixlen;
+		SET_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_NEW);
 
 		origin_as = bgp_rtc_plist_entry_asn_new();
 		*origin_as = p->u.prefix_rtc.origin_as;
@@ -558,20 +579,44 @@ static int bgp_rtc_plist_entry_del(struct bgp_rtc_plist *rtc_plist, struct prefi
 			break;
 		}
 		if (!list_isempty(rtc_pentry->origin_as))
+			/* If origin AS list is not empty, the entry is still valid.
+			 * Do not set Remove flag.
+			 */
 			break;
 
-		listnode_delete(rtc_plist->entries, rtc_pentry);
-		bgp_rtc_plist_entry_free(rtc_pentry);
+		rtc_pentry->flags = RTC_PLIST_ENTRY_REMOVE;
+
 		break;
 	}
 
 	return ret;
 }
 
+void bgp_peer_rtc_plist_reset_flags(struct peer *peer)
+{
+	struct bgp_rtc_plist_entry *rtc_pentry;
+	struct listnode *node, *nnode;
+
+	if (!peer->rtc_plist)
+		return;
+
+	RESET_FLAG(peer->rtc_plist->flags);
+
+	for (ALL_LIST_ELEMENTS(peer->rtc_plist->entries, node, nnode, rtc_pentry)) {
+		if (CHECK_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_REMOVE)) {
+			listnode_delete(peer->rtc_plist->entries, rtc_pentry);
+			bgp_rtc_plist_entry_free(rtc_pentry);
+			continue;
+		}
+		RESET_FLAG(rtc_pentry->flags);
+	}
+}
+
 static void bgp_peer_init_rtc_plist(struct peer *peer)
 {
 	peer->rtc_plist = bgp_rtc_plist_new();
 	peer->rtc_plist->router_id.s_addr = peer->remote_id.s_addr;
+	SET_FLAG(peer->rtc_plist->flags, RTC_PLIST_NEW);
 
 	listnode_add(peer->bgp->rtc_plists, peer->rtc_plist);
 }
@@ -619,6 +664,7 @@ void bgp_show_rtc_plist(struct vty *vty, struct bgp_rtc_plist *rtc_plist, bool u
 	char bgp_router_id_str[INET_ADDRSTRLEN];
 	struct listnode *enode, *asnode;
 	as_t *origin_as = NULL;
+	int64_t count = 0;
 
 	snprintfrr(bgp_router_id_str, sizeof(bgp_router_id_str), "%pI4", &rtc_plist->router_id);
 
@@ -627,11 +673,13 @@ void bgp_show_rtc_plist(struct vty *vty, struct bgp_rtc_plist *rtc_plist, bool u
 		json_rtc_plist = json_object_new_object();
 
 		json_object_object_add(json, "rtcPrefixList", json_rtc_plist);
-		json_object_int_add(json_rtc_plist, "prefixListCounter", listcount(rtc_plist->entries));
 
 		json_object_string_add(json_rtc_plist, "prefixListName", bgp_router_id_str);
 
 		for (ALL_LIST_ELEMENTS_RO(rtc_plist->entries, enode, rtc_pentry)) {
+			if (CHECK_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_REMOVE))
+				continue;
+			count++;
 			json_rt = json_object_new_object();
 			if (rtc_pentry->prefixlen == 0 || rtc_pentry->prefixlen == 32)
 				json_object_object_addf(json_rtc_plist, json_rt, "0/%u",
@@ -648,14 +696,25 @@ void bgp_show_rtc_plist(struct vty *vty, struct bgp_rtc_plist *rtc_plist, bool u
 				json_array_string_addf(json_as_array, "%u", *origin_as);
 		}
 
+		json_object_int_add(json_rtc_plist, "prefixListCounter", count);
+
 		vty_json(vty, json);
 
 		return;
 	}
 
-	vty_out(vty, "RTC prefix-list for peer router-ID %s: %d entries\n", bgp_router_id_str, listcount(rtc_plist->entries));
+	for (ALL_LIST_ELEMENTS_RO(rtc_plist->entries, enode, rtc_pentry)) {
+		if (CHECK_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_REMOVE))
+			continue;
+		count++;
+	}
+
+	vty_out(vty, "RTC prefix-list for peer router-ID %s: %lld entries\n", bgp_router_id_str,
+		count);
 
 	for (ALL_LIST_ELEMENTS_RO(rtc_plist->entries, enode, rtc_pentry)) {
+		if (CHECK_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_REMOVE))
+			continue;
 		if (rtc_pentry->prefixlen == 0 || rtc_pentry->prefixlen == 32)
 			vty_out(vty, "   0/%u from origin ASNs:\n", rtc_pentry->prefixlen);
 		else

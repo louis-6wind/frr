@@ -346,6 +346,7 @@ struct stream *bpacket_reformat_for_peer(struct bpacket *pkt,
 	safi_t safi;
 	size_t attrlen_pos, mp_start, mplen_pos, total_attr_len, prefix_start, prefix_end;
 	char *ecom_str;
+	enum rtc_prefix_list_type rtc_filter;
 
 	peer = PAF_PEER(paf);
 	afi = paf->afi;
@@ -380,7 +381,27 @@ struct stream *bpacket_reformat_for_peer(struct bpacket *pkt,
 			       psize - VPN_PREFIXLEN_MIN_BYTES);
 		}
 
-		if (bgp_rtc_filter(peer, &ecom, &p) == RTC_PREFIX_DENY) {
+		rtc_filter = bgp_rtc_filter(peer, &ecom, &p, false);
+
+		/* Only send the necessary UPDATE / WITHDRAW for transition after RTC change */
+		if (!CHECK_FLAG(pkt->arr.entries[BGP_ATTR_VEC_ATTR_CHANGED].flags,
+				BPKT_ATTRVEC_FLAGS_UPDATED)) {
+			/* RTC prefix-list has been refreshed
+			 * and the attributes haven't changed (when they change, we need to notice all peers)
+			 */
+			if (CHECK_FLAG(peer->af_flags[afi][safi], PEER_FLAG_AF_RTC_UPDATE)) {
+				/* peer prefix-list has changed */
+				if (rtc_filter == bgp_rtc_filter(peer, &ecom, &p, true))
+					/* current filtering is the same than the previous one.
+					 * No need to notice the peer
+					 */
+					return NULL;
+			} else
+				/* peer prefix-list has not changed. No need to notice the peer */
+				return NULL;
+		}
+
+		if (rtc_filter == RTC_PREFIX_DENY) {
 			if ((afi == AFI_L2VPN && safi == SAFI_EVPN))
 				/* Do no support withdraw for now */
 				return NULL;
@@ -981,6 +1002,10 @@ struct bpacket *subgroup_update_packet(struct update_subgroup *subgrp)
 				   pfx_buf);
 		}
 
+		if (adj->force) {
+			bpacket_attr_vec_arr_set_vec(&vecarr, BGP_ATTR_VEC_ATTR_CHANGED, s, NULL);
+			adj->force = false;
+		}
 		/* Synchnorize attribute.  */
 		if (adj->attr)
 			bgp_attr_unintern(&adj->attr);

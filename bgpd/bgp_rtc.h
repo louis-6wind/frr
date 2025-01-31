@@ -17,23 +17,33 @@
 enum rtc_prefix_list_type {
 	RTC_PREFIX_DENY = 0,
 	RTC_PREFIX_PERMIT,
+	RTC_PREFIX_UNDEF,
 };
 
 struct bgp_rtc_plist_entry {
 	struct list *origin_as;
 	uint8_t route_target[8];
 	uint8_t prefixlen;
+
+/* NEW and REMOVE flags are set when the entry has just changed */
+#define RTC_PLIST_ENTRY_NEW    (1 << 0)
+#define RTC_PLIST_ENTRY_REMOVE (1 << 1)
+	uint8_t flags;
 };
 
 struct bgp_rtc_plist {
 	struct list *entries;
 	struct in_addr router_id;
+
+#define RTC_PLIST_NEW (1 << 0)
+	uint8_t flags;
 };
 
 extern int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *packet,
 			      bool withdraw);
 
-extern enum rtc_prefix_list_type bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom, struct prefix *p);
+extern enum rtc_prefix_list_type bgp_rtc_filter(struct peer *peer, struct ecommunity *ecom,
+						struct prefix *p, bool previous_state);
 
 extern void bgp_rtc_add_ecommunity_val_dynamic(struct bgp *bgp, struct ecommunity_val *eval);
 extern void bgp_rtc_remove_ecommunity_val_dynamic(struct bgp *bgp, struct ecommunity_val *eval);
@@ -47,6 +57,8 @@ extern char *bgp_rtc_prefix_display(char *buf, size_t size, uint16_t prefix_len,
 				    const struct rtc_info *rtc_info);
 
 extern void bgp_rtc_plist_free(void *arg);
+extern void bgp_peer_rtc_plist_reset_flags(struct peer *peer);
+extern void bgp_peer_rtc_plist_reset_early_flags(struct peer *peer);
 extern struct bgp_rtc_plist *bgp_peer_get_rtc_plist(struct peer *peer);
 extern int bgp_rtc_plist_entry_set(struct peer *peer, struct prefix *p, bool add);
 extern void bgp_show_rtc_plist(struct vty *vty, struct bgp_rtc_plist *rtc_plist, bool json);
