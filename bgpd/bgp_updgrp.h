@@ -13,6 +13,7 @@
 #define _QUAGGA_BGP_UPDGRP_H
 
 #include "bgp_advertise.h"
+#include "bgp_rtc.h"
 
 /*
  * The following three heuristic constants determine how long advertisement to
@@ -63,6 +64,7 @@ enum bpacket_attr_vec_type {
 	BGP_ATTR_VEC_MP_PREFIX_LABEL,
 	BGP_ATTR_VEC_MP_PREFIX_START,
 	BGP_ATTR_VEC_MP_PREFIX_END,
+	BGP_ATTR_VEC_ATTR_CHANGED,
 	BGP_ATTR_VEC_MAX
 };
 
@@ -253,7 +255,8 @@ struct update_subgroup {
 
 	uint16_t flags;
 #define SUBGRP_FLAG_NEEDS_REFRESH (1 << 0)
-#define SUBGRP_FLAG_NEEDS_RTC_REFRESH (1 << 1)
+#define SUBGRP_FLAG_NEEDS_RTC_REFRESH_REQUESTED (1 << 1)
+#define SUBGRP_FLAG_NEEDS_RTC_REFRESH		(1 << 2)
 };
 
 /*
@@ -597,7 +600,16 @@ static inline uint8_t _bgp_announce_peer_set_rtc_refresh(struct peer *peer)
 
 		paf = peer->peer_af_array[afidx];
 		if (paf && PAF_SUBGRP(paf)) {
-			SET_FLAG(PAF_SUBGRP(paf)->flags, SUBGRP_FLAG_NEEDS_RTC_REFRESH);
+			SET_FLAG(PAF_SUBGRP(paf)->flags, SUBGRP_FLAG_NEEDS_RTC_REFRESH_REQUESTED);
+			if (afidx == BGP_AF_IPV4_VPN)
+				SET_FLAG(peer->af_flags[AFI_IP][SAFI_MPLS_VPN],
+					 PEER_FLAG_AF_RTC_UPDATE);
+			else if (afidx == BGP_AF_IPV6_VPN)
+				SET_FLAG(peer->af_flags[AFI_IP6][SAFI_MPLS_VPN],
+					 PEER_FLAG_AF_RTC_UPDATE);
+			else if (afidx == BGP_AF_L2VPN_EVPN)
+				SET_FLAG(peer->af_flags[AFI_L2VPN][SAFI_EVPN],
+					 PEER_FLAG_AF_RTC_UPDATE);
 
 			nb_af++;
 		}
@@ -639,6 +651,68 @@ static inline void bgp_announce_peer_set_rtc_refresh(struct peer *peer)
 	}
 }
 
+static inline bool _bgp_announce_peer_unset_rtc_refresh(struct peer *peer)
+{
+	struct peer_af *paf;
+	int afidx;
+
+	for (afidx = BGP_AF_START; afidx < BGP_AF_MAX; afidx++) {
+		if (afidx != BGP_AF_IPV4_VPN && afidx != BGP_AF_IPV6_VPN &&
+		    afidx != BGP_AF_L2VPN_EVPN)
+			continue;
+
+		paf = peer->peer_af_array[afidx];
+		if (paf && PAF_SUBGRP(paf) &&
+		    CHECK_FLAG(PAF_SUBGRP(paf)->flags, SUBGRP_FLAG_NEEDS_RTC_REFRESH)) {
+			if (BGP_AF_IPV4_VPN && CHECK_FLAG(peer->af_flags[AFI_IP][SAFI_MPLS_VPN],
+							  PEER_FLAG_AF_RTC_UPDATE))
+				return true;
+			if (BGP_AF_IPV6_VPN && CHECK_FLAG(peer->af_flags[AFI_IP6][SAFI_MPLS_VPN],
+							  PEER_FLAG_AF_RTC_UPDATE))
+				return true;
+			if (BGP_AF_L2VPN_EVPN && CHECK_FLAG(peer->af_flags[AFI_L2VPN][SAFI_EVPN],
+							    PEER_FLAG_AF_RTC_UPDATE))
+				return true;
+		}
+	}
+
+	return false;
+}
+
+static inline void bgp_announce_peer_unset_rtc_refresh(struct peer *peer)
+{
+	struct listnode *node;
+	struct peer *peer_iter;
+	struct bgp *bgp = peer->bgp;
+	uint8_t ipv4_vpn = !!bgp->af_peer_count[AFI_IP][SAFI_MPLS_VPN];
+	uint8_t ipv6_vpn = !!bgp->af_peer_count[AFI_IP6][SAFI_MPLS_VPN];
+	uint8_t evpn = !!bgp->af_peer_count[AFI_L2VPN][SAFI_EVPN];
+	uint8_t max_af = ipv4_vpn + ipv6_vpn + evpn;
+
+	if (max_af == 1) {
+		/* There is only one enabled (E)VPN address-family */
+		if (!_bgp_announce_peer_unset_rtc_refresh(peer))
+			bgp_peer_rtc_plist_reset_flags(peer);
+
+		return;
+	}
+
+	for (ALL_LIST_ELEMENTS_RO(bgp->peer, node, peer_iter)) {
+		if (peer != peer_iter && peer->remote_id.s_addr != peer_iter->remote_id.s_addr)
+			continue;
+
+		if (_bgp_announce_peer_unset_rtc_refresh(peer_iter))
+			return;
+	}
+
+	for (ALL_LIST_ELEMENTS_RO(bgp->peer, node, peer_iter)) {
+		if (peer != peer_iter && peer->remote_id.s_addr != peer_iter->remote_id.s_addr)
+			continue;
+
+		bgp_peer_rtc_plist_reset_flags(peer);
+	}
+}
+
 /*
  * update_group_adjust_peer_afs
  *
@@ -655,9 +729,10 @@ static inline void bgp_announce_peer_rtc_refresh(struct peer *peer)
 			continue;
 		paf = peer->peer_af_array[afidx];
 		if (paf && PAF_SUBGRP(paf) &&
-		    CHECK_FLAG(PAF_SUBGRP(paf)->flags, SUBGRP_FLAG_NEEDS_RTC_REFRESH)) {
+		    CHECK_FLAG(PAF_SUBGRP(paf)->flags, SUBGRP_FLAG_NEEDS_RTC_REFRESH_REQUESTED)) {
 			subgroup_announce_all(PAF_SUBGRP(paf));
-			UNSET_FLAG(PAF_SUBGRP(paf)->flags, SUBGRP_FLAG_NEEDS_RTC_REFRESH);
+			UNSET_FLAG(PAF_SUBGRP(paf)->flags, SUBGRP_FLAG_NEEDS_RTC_REFRESH_REQUESTED);
+			SET_FLAG(PAF_SUBGRP(paf)->flags, SUBGRP_FLAG_NEEDS_RTC_REFRESH);
 		}
 	}
 }

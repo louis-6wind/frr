@@ -15398,7 +15398,8 @@ show_adj_route(struct vty *vty, struct peer *peer, struct bgp_table *table,
 					}
 
 					ecom = bgp_attr_get_ecommunity(&attr);
-					if (ecom && bgp_rtc_filter(peer, ecom, NULL) == RTC_PREFIX_DENY) {
+					if (ecom && bgp_rtc_filter(peer, ecom, NULL, false) ==
+							    RTC_PREFIX_DENY) {
 						(*filtered_count)++;
 						bgp_attr_flush(&attr);
 						continue;
