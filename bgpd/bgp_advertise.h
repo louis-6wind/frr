@@ -80,6 +80,8 @@ struct bgp_adj_out {
 
 	/* Advertisement information.  */
 	struct bgp_advertise *adv;
+
+	bool force;
 };
 
 RB_HEAD(bgp_adj_out_rb, bgp_adj_out);

@@ -587,7 +587,7 @@ bool bgp_adj_out_set_subgroup(struct bgp_dest *dest,
 	 * the route wasn't changed actually.
 	 * Do not suppress BGP UPDATES for route-refresh.
 	 */
-	if (likely(CHECK_FLAG(bgp->flags, BGP_FLAG_SUPPRESS_DUPLICATES)))
+	if (likely(CHECK_FLAG(bgp->flags, BGP_FLAG_SUPPRESS_DUPLICATES)) || rtc_in_subgrp)
 		attr_hash = attrhash_key_make(attr);
 
 	if (!rtc_in_subgrp && attr_hash && adj->attr_hash == attr_hash &&
@@ -632,6 +632,9 @@ bool bgp_adj_out_set_subgroup(struct bgp_dest *dest,
 
 	adv->baa = bgp_advertise_attr_intern(subgrp->hash, attr);
 	adv->adj = adj;
+
+	adj->force = adj->attr_hash != attr_hash || adj->force;
+
 	adj->attr_hash = attr_hash;
 	if (path->extra)
 		adj->labels = bgp_labels_intern(path->extra->labels);
