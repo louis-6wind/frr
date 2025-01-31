@@ -395,14 +395,18 @@ struct stream *bpacket_reformat_for_peer(struct bpacket *pkt,
 			 */
 			if (CHECK_FLAG(peer->af_flags[afi][safi], PEER_FLAG_AF_RTC_UPDATE)) {
 				/* peer prefix-list has changed */
-				if (rtc_filter == bgp_rtc_filter(peer, &ecom, &p, true))
+				if (rtc_filter == bgp_rtc_filter(peer, &ecom, &p, true)) {
 					/* current filtering is the same than the previous one.
 					 * No need to notice the peer
 					 */
+					ecom_str = ecommunity_ecom2str(&ecom,
+								       ECOMMUNITY_FORMAT_DISPLAY, 0);
+					zlog_debug("%s: dont re-announce prefix EC(%s) %pFX to peer %pBP. No RTC filtering change",
+						   __func__, ecom_str, &p, peer);
+					XFREE(MTYPE_ECOMMUNITY_STR, ecom_str);
 					return NULL;
-			} else
-				/* peer prefix-list has not changed. No need to notice the peer */
-				return NULL;
+				}
+			}
 		}
 
 		if (rtc_filter == RTC_PREFIX_DENY) {

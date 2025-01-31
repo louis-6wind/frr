@@ -546,6 +546,7 @@ void bgp_routeadv_timer(struct event *thread)
 		zlog_debug("%s [FSM] Timer (routeadv timer expire)", peer->host);
 
 	peer->synctime = monotime(NULL);
+	zlog_debug("%s: schedule bgp_generate_updgrp_packets", __func__);
 
 	event_add_timer_msec(bm->master, bgp_generate_updgrp_packets, connection,
 			     0, &connection->t_generate_updgrp_packets);
@@ -977,6 +978,7 @@ void bgp_adjust_routeadv(struct peer *peer)
 		 * is added to update group packet generate which will allow
 		 * more routes to be sent in the update message
 		 */
+		zlog_debug("%s: schedule bgp_generate_updgrp_packets", __func__);
 		BGP_UPDATE_GROUP_TIMER_ON(&connection->t_generate_updgrp_packets,
 					  bgp_generate_updgrp_packets);
 		return;

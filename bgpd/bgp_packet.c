@@ -461,6 +461,7 @@ void bgp_generate_updgrp_packets(struct event *thread)
 	wpq = atomic_load_explicit(&peer->bgp->wpkt_quanta,
 				   memory_order_relaxed);
 
+	zlog_debug("%s: enter %pBP", __func__, peer);
 	/*
 	 * The code beyond this part deals with update packets, proceed only
 	 * if peer is Established and updates are not on hold (as part of
@@ -526,6 +527,13 @@ void bgp_generate_updgrp_packets(struct event *thread)
 					found = false;
 					UNSET_FLAG(peer->af_flags[afi][safi],
 						   PEER_FLAG_AF_RTC_UPDATE);
+					zlog_debug("DEBFLAG %pBP UNset PEER_FLAG_AF_RTC_UPDATE for %s %s",
+						   peer,
+						   afi == AFI_IP      ? "ipv4 vpn"
+						   : afi == AFI_IP6   ? "ipv6 vpn"
+						   : afi == AFI_L2VPN ? "evpn"
+								      : "??",
+						   __func__);
 
 					SUBGRP_FOREACH_PEER (PAF_SUBGRP(paf), paf_iter) {
 						if (CHECK_FLAG(paf->peer->af_flags[afi][safi],
@@ -535,9 +543,14 @@ void bgp_generate_updgrp_packets(struct event *thread)
 						}
 					}
 					bgp_announce_peer_unset_rtc_refresh(peer);
-					if (!found)
+					if (!found) {
 						UNSET_FLAG(PAF_SUBGRP(paf)->flags,
 							   SUBGRP_FLAG_NEEDS_RTC_REFRESH);
+						zlog_debug("DEBFLAG %pBP UNset SUBGRP_FLAG_NEEDS_RTC_REFRESH u%" PRIu64
+							   ":s%" PRIu64 " %s",
+							   peer, PAF_SUBGRP(paf)->update_group->id,
+							   PAF_SUBGRP(paf)->id, __func__);
+					}
 				}
 
 				if (!paf->t_announce_route) {

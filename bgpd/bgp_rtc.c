@@ -43,6 +43,9 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 
 		apply_mask(&p);
 
+		zlog_debug("%s: Received %s about %pFX from %pBP", __func__,
+			   withdraw ? "withdraw" : "update", &p, peer);
+
 		if (withdraw || peer->as == peer->bgp->as) {
 			/* RFC4684 says
 			 * "When processing RT membership NLRIs received from internal iBGP
@@ -61,6 +64,8 @@ int bgp_nlri_parse_rtc(struct peer *peer, struct attr *attr, struct bgp_nlri *pa
 			if (bgp_rtc_plist_entry_set(peer, &p, !withdraw)) {
 				/* only set update flags if the peer prefix-list has changed */
 				SET_FLAG(peer->flags, PEER_FLAG_RTC_UPDATE);
+				zlog_debug("DEBFLAG %pBP set PEER_FLAG_RTC_UPDATE %s", peer,
+					   __func__);
 				zlog_debug("%s: %s %pFX - request %pBP refresh DEB", __func__,
 					   withdraw ? "withdraw" : "update", &p, peer);
 			}
@@ -548,6 +553,9 @@ static int bgp_rtc_plist_entry_add(struct bgp_rtc_plist *rtc_plist, struct prefi
 	}
 
 	if (rtc_pentry) {
+		zlog_debug("DEBFLAG change %s rtc_pentry->flags from %u to %u (unset remove) %s",
+			   ecommunity_rt_str(rtc_pentry->route_target), rtc_pentry->flags,
+			   rtc_pentry->flags & ~RTC_PLIST_ENTRY_REMOVE, __func__);
 		UNSET_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_REMOVE);
 		if (list_isempty(rtc_pentry->origin_as))
 			SET_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_NEW);
@@ -557,7 +565,8 @@ static int bgp_rtc_plist_entry_add(struct bgp_rtc_plist *rtc_plist, struct prefi
 		       sizeof(rtc_pentry->route_target));
 		rtc_pentry->prefixlen = p->prefixlen;
 		SET_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_NEW);
-
+		zlog_debug("DEBFLAG change %s rtc_pentry->flags from 0 to %u %s",
+			   ecommunity_rt_str(rtc_pentry->route_target), rtc_pentry->flags, __func__);
 		origin_as = bgp_rtc_plist_entry_asn_new();
 		*origin_as = p->u.prefix_rtc.origin_as;
 
@@ -616,6 +625,9 @@ static int bgp_rtc_plist_entry_del(struct bgp_rtc_plist *rtc_plist, struct prefi
 			 */
 			break;
 
+		zlog_debug("DEBFLAG change %s rtc_pentry->flags from %u to %u %s",
+			   ecommunity_rt_str(rtc_pentry->route_target), rtc_pentry->flags,
+			   RTC_PLIST_ENTRY_REMOVE, __func__);
 		rtc_pentry->flags = RTC_PLIST_ENTRY_REMOVE;
 
 		break;
@@ -632,6 +644,10 @@ void bgp_peer_rtc_plist_reset_flags(struct peer *peer)
 	if (!peer->rtc_plist)
 		return;
 
+	zlog_debug("DEBFLAG %pBP reset plist flags %s", peer, __func__);
+
+	zlog_debug("DEBFLAG change %pBP rtc_plist->flags from %u to 0 %s", peer,
+		   peer->rtc_plist->flags, __func__);
 	RESET_FLAG(peer->rtc_plist->flags);
 
 	for (ALL_LIST_ELEMENTS(peer->rtc_plist->entries, node, nnode, rtc_pentry)) {
@@ -640,6 +656,8 @@ void bgp_peer_rtc_plist_reset_flags(struct peer *peer)
 			bgp_rtc_plist_entry_free(rtc_pentry);
 			continue;
 		}
+		zlog_debug("DEBFLAG change %s rtc_pentry->flags from %u to 0 %s",
+			   ecommunity_rt_str(rtc_pentry->route_target), rtc_pentry->flags, __func__);
 		RESET_FLAG(rtc_pentry->flags);
 	}
 }
@@ -649,7 +667,8 @@ static void bgp_peer_init_rtc_plist(struct peer *peer)
 	peer->rtc_plist = bgp_rtc_plist_new();
 	peer->rtc_plist->router_id.s_addr = peer->remote_id.s_addr;
 	SET_FLAG(peer->rtc_plist->flags, RTC_PLIST_NEW);
-
+	zlog_debug("DEBFLAG change %pBP rtc_plist->flags from 0 to %u %s", peer,
+		   peer->rtc_plist->flags, __func__);
 	listnode_add(peer->bgp->rtc_plists, peer->rtc_plist);
 }
 

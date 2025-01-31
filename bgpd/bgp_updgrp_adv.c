@@ -670,6 +670,8 @@ bool bgp_adj_out_set_subgroup(struct bgp_dest *dest,
 		}
 	}
 
+	zlog_debug("u%" PRIu64 ":s%" PRIu64 " %s %s add to update", subgrp->update_group->id,
+		   subgrp->id, __func__, bgp_dest_get_prefix_str(dest));
 	bgp_adv_fifo_add_tail(&subgrp->sync->update, adv);
 
 	subgrp->version = MAX(subgrp->version, dest->version);
@@ -720,6 +722,9 @@ void bgp_adj_out_unset_subgroup(struct bgp_dest *dest,
 
 			/* Add to synchronization entry for withdraw
 			 * announcement.  */
+			zlog_debug("u%" PRIu64 ":s%" PRIu64 " %s %s add to withdraw",
+				   subgrp->update_group->id, subgrp->id, __func__,
+				   bgp_dest_get_prefix_str(dest));
 			bgp_adv_fifo_add_tail(&subgrp->sync->withdraw, adv);
 
 			if (trigger_write)
@@ -783,6 +788,8 @@ void subgroup_announce_table(struct update_subgroup *subgrp,
 	else
 		safi_rib = safi;
 
+	zlog_debug("u%" PRIu64 ":s%" PRIu64 " %s", subgrp->update_group->id, subgrp->id, __func__);
+
 	if (!table)
 		table = peer->bgp->rib[afi][safi_rib];
 
@@ -795,15 +802,19 @@ void subgroup_announce_table(struct update_subgroup *subgrp,
 	SET_FLAG(subgrp->sflags, SUBGRP_STATUS_TABLE_REPARSING);
 
 	for (dest = bgp_table_top(table); dest; dest = bgp_route_next(dest)) {
-
+		zlog_debug("u%" PRIu64 ":s%" PRIu64 " %s %s ri %d", subgrp->update_group->id,
+			   subgrp->id, __func__, bgp_dest_get_prefix_str(dest),
+			   !!bgp_dest_get_bgp_path_info(dest));
 		if (addpath_capable)
 			subgrp_announce_addpath_best_selected(dest, subgrp);
 
 		for (ri = bgp_dest_get_bgp_path_info(dest); ri; ri = ri->next) {
-
-			if (!bgp_check_selected(ri, peer, addpath_capable, afi,
-						safi_rib))
+			if (!bgp_check_selected(ri, peer, addpath_capable, afi, safi_rib)) {
+				zlog_debug("u%" PRIu64 ":s%" PRIu64 " %s %s !bgp_check_selected",
+					   subgrp->update_group->id, subgrp->id, __func__,
+					   bgp_dest_get_prefix_str(dest));
 				continue;
+			}
 
 			/* If default originate is enabled for
 			 * the peer, do not send explicit
@@ -816,6 +827,10 @@ void subgroup_announce_table(struct update_subgroup *subgrp,
 			    is_default_prefix(bgp_dest_get_prefix(dest)))
 				break;
 
+			zlog_debug("u%" PRIu64 ":s%" PRIu64 " %s %s ri select %d",
+				   subgrp->update_group->id, subgrp->id, __func__,
+				   bgp_dest_get_prefix_str(dest),
+				   !!CHECK_FLAG(ri->flags, BGP_PATH_SELECTED));
 			if (CHECK_FLAG(ri->flags, BGP_PATH_SELECTED))
 				subgroup_process_announce_selected(
 					subgrp, ri, dest, afi, safi_rib,
@@ -857,16 +872,18 @@ void subgroup_announce_route(struct update_subgroup *subgrp)
 		update_subgroup_set_needs_refresh(subgrp, 0);
 	}
 
+	zlog_debug("u%" PRIu64 ":s%" PRIu64 " %s", subgrp->update_group->id, subgrp->id, __func__);
 	/*
 	 * First update is deferred until ORF or ROUTE-REFRESH is received
 	 */
 	onlypeer = ((SUBGRP_PCOUNT(subgrp) == 1) ? (SUBGRP_PFIRST(subgrp))->peer
 						 : NULL);
-	if (onlypeer && CHECK_FLAG(onlypeer->af_sflags[SUBGRP_AFI(subgrp)]
-						      [SUBGRP_SAFI(subgrp)],
-				   PEER_STATUS_ORF_WAIT_REFRESH))
+	if (onlypeer && CHECK_FLAG(onlypeer->af_sflags[SUBGRP_AFI(subgrp)][SUBGRP_SAFI(subgrp)],
+				   PEER_STATUS_ORF_WAIT_REFRESH)) {
+		zlog_debug("u%" PRIu64 ":s%" PRIu64 " %s return", subgrp->update_group->id,
+			   subgrp->id, __func__);
 		return;
-
+	}
 	if (SUBGRP_SAFI(subgrp) != SAFI_MPLS_VPN
 	    && SUBGRP_SAFI(subgrp) != SAFI_ENCAP
 	    && SUBGRP_SAFI(subgrp) != SAFI_EVPN)
@@ -1102,7 +1119,7 @@ void subgroup_announce_all(struct update_subgroup *subgrp)
 	 */
 	if (!subgrp->v_coalesce) {
 		if (bgp_debug_update(NULL, NULL, subgrp->update_group, 0))
-			zlog_debug("u%" PRIu64 ":s%" PRIu64" announcing all routes",
+			zlog_debug("u%" PRIu64 ":s%" PRIu64 " announcing all routes immediately",
 				   subgrp->update_group->id, subgrp->id);
 		subgroup_announce_route(subgrp);
 		return;
@@ -1112,6 +1129,9 @@ void subgroup_announce_all(struct update_subgroup *subgrp)
 	 * We should wait for the coalesce timer. Arm the timer if not done.
 	 */
 	if (!subgrp->t_coalesce) {
+		if (bgp_debug_update(NULL, NULL, subgrp->update_group, 0))
+			zlog_debug("u%" PRIu64 ":s%" PRIu64 " announcing all routes later",
+				   subgrp->update_group->id, subgrp->id);
 		event_add_timer_msec(bm->master, subgroup_coalesce_timer,
 				     subgrp, subgrp->v_coalesce,
 				     &subgrp->t_coalesce);
