@@ -370,9 +370,10 @@ struct stream *bpacket_reformat_for_peer(struct bpacket *pkt,
 
 #define VPN_PREFIXLEN_MIN_BYTES (3 + 8) /* label + RD */
 
+		p.family = afi2family(afi);
+
 		if (safi == SAFI_MPLS_VPN && BGP_DEBUG(update, UPDATE_OUT)) {
 			/* decode prefix for debugging */
-			p.family = afi2family(afi);
 			vec = &pkt->arr.entries[BGP_ATTR_VEC_MP_PREFIX_LABEL];
 			uint8_t prefixlen = stream_getc_from(pkt->buffer, vec->offset - 1);
 			uint8_t psize = PSIZE(prefixlen);

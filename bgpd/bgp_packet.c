@@ -542,7 +542,7 @@ void bgp_generate_updgrp_packets(struct event *thread)
 							break;
 						}
 					}
-					bgp_announce_peer_unset_rtc_refresh(peer);
+					bgp_announce_peer_unset_rtc_refresh(peer, afi);
 					if (!found) {
 						UNSET_FLAG(PAF_SUBGRP(paf)->flags,
 							   SUBGRP_FLAG_NEEDS_RTC_REFRESH);
