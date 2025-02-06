@@ -158,7 +158,10 @@ enum rtc_prefix_list_type bgp_rtc_filter(struct peer *peer, struct ecommunity *e
 		return RTC_PREFIX_PERMIT;
 	}
 
-	if (previous_state && CHECK_FLAG(rtc_plist->flags, RTC_PLIST_NEW))
+	if (previous_state &&
+	    ((p->family == AF_INET && CHECK_FLAG(rtc_plist->flags, RTC_PLIST_NEW_IPV4_VPN)) ||
+	     (p->family == AF_INET6 && CHECK_FLAG(rtc_plist->flags, RTC_PLIST_NEW_IPV6_VPN)) ||
+	     (p->family == AF_ETHERNET && CHECK_FLAG(rtc_plist->flags, RTC_PLIST_NEW_EVPN))))
 		return RTC_PREFIX_UNDEF;
 
 	for (uint32_t i = 0; i < ecom->size; i++) {
@@ -624,7 +627,7 @@ static int bgp_rtc_plist_entry_del(struct bgp_rtc_plist *rtc_plist, struct prefi
 	return ret;
 }
 
-void bgp_peer_rtc_plist_reset_flags(struct peer *peer)
+void bgp_peer_rtc_plist_reset_flags(struct peer *peer, afi_t afi, bool reset_entries)
 {
 	struct bgp_rtc_plist_entry *rtc_pentry;
 	struct listnode *node, *nnode;
@@ -632,11 +635,20 @@ void bgp_peer_rtc_plist_reset_flags(struct peer *peer)
 	if (!peer->rtc_plist)
 		return;
 
-	zlog_debug("DEBFLAG %pBP reset plist flags %s", peer, __func__);
+	uint8_t old_flags = peer->rtc_plist->flags;
 
-	zlog_debug("DEBFLAG change %pBP rtc_plist->flags from %u to 0 %s", peer,
+	if (afi == AFI_IP)
+		UNSET_FLAG(peer->rtc_plist->flags, RTC_PLIST_NEW_IPV4_VPN);
+	else if (afi == AFI_IP6)
+		UNSET_FLAG(peer->rtc_plist->flags, RTC_PLIST_NEW_IPV6_VPN);
+	else if (afi == AFI_L2VPN)
+		UNSET_FLAG(peer->rtc_plist->flags, RTC_PLIST_NEW_EVPN);
+
+	zlog_debug("DEBFLAG change %pBP rtc_plist->flags from %u to %u %s", peer, old_flags,
 		   peer->rtc_plist->flags, __func__);
-	RESET_FLAG(peer->rtc_plist->flags);
+
+	if (!reset_entries)
+		return;
 
 	for (ALL_LIST_ELEMENTS(peer->rtc_plist->entries, node, nnode, rtc_pentry)) {
 		if (CHECK_FLAG(rtc_pentry->flags, RTC_PLIST_ENTRY_REMOVE)) {
@@ -654,10 +666,26 @@ static void bgp_peer_init_rtc_plist(struct peer *peer)
 {
 	peer->rtc_plist = bgp_rtc_plist_new();
 	peer->rtc_plist->router_id.s_addr = peer->remote_id.s_addr;
-	SET_FLAG(peer->rtc_plist->flags, RTC_PLIST_NEW);
+	SET_FLAG(peer->rtc_plist->flags,
+		 RTC_PLIST_NEW_IPV4_VPN | RTC_PLIST_NEW_IPV6_VPN | RTC_PLIST_NEW_EVPN);
 	zlog_debug("DEBFLAG change %pBP rtc_plist->flags from 0 to %u %s", peer,
 		   peer->rtc_plist->flags, __func__);
 	listnode_add(peer->bgp->rtc_plists, peer->rtc_plist);
+}
+
+void bgp_peer_init_afi_rtc_plist(struct peer *peer, afi_t afi)
+{
+	struct bgp_rtc_plist *rtc_plist = bgp_peer_get_rtc_plist(peer);
+
+	if (!rtc_plist)
+		return;
+
+	if (afi == AFI_IP)
+		SET_FLAG(rtc_plist->flags, RTC_PLIST_NEW_IPV4_VPN);
+	else if (afi == AFI_IP6)
+		SET_FLAG(rtc_plist->flags, RTC_PLIST_NEW_IPV6_VPN);
+	else if (afi == AFI_L2VPN)
+		SET_FLAG(rtc_plist->flags, RTC_PLIST_NEW_EVPN);
 }
 
 struct bgp_rtc_plist *bgp_peer_get_rtc_plist(struct peer *peer)
