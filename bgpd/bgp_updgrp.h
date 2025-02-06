@@ -691,7 +691,7 @@ static inline bool _bgp_announce_peer_unset_rtc_refresh(struct peer *peer)
 	return false;
 }
 
-static inline void bgp_announce_peer_unset_rtc_refresh(struct peer *peer)
+static inline void bgp_announce_peer_unset_rtc_refresh(struct peer *peer, afi_t afi)
 {
 	struct listnode *node;
 	struct peer *peer_iter;
@@ -704,7 +704,7 @@ static inline void bgp_announce_peer_unset_rtc_refresh(struct peer *peer)
 	if (max_af == 1) {
 		/* There is only one enabled (E)VPN address-family */
 		if (!_bgp_announce_peer_unset_rtc_refresh(peer))
-			bgp_peer_rtc_plist_reset_flags(peer);
+			bgp_peer_rtc_plist_reset_flags(peer, afi, true);
 
 		return;
 	}
@@ -712,15 +712,17 @@ static inline void bgp_announce_peer_unset_rtc_refresh(struct peer *peer)
 	for (ALL_LIST_ELEMENTS_RO(bgp->peer, node, peer_iter)) {
 		if (peer != peer_iter && peer->remote_id.s_addr != peer_iter->remote_id.s_addr)
 			continue;
-		if (_bgp_announce_peer_unset_rtc_refresh(peer_iter))
+		if (_bgp_announce_peer_unset_rtc_refresh(peer_iter)) {
+			bgp_peer_rtc_plist_reset_flags(peer, afi, false);
 			return;
+		}
 	}
 
 	for (ALL_LIST_ELEMENTS_RO(bgp->peer, node, peer_iter)) {
 		if (peer != peer_iter && peer->remote_id.s_addr != peer_iter->remote_id.s_addr)
 			continue;
 
-		bgp_peer_rtc_plist_reset_flags(peer);
+		bgp_peer_rtc_plist_reset_flags(peer, afi, true);
 	}
 }
 

@@ -347,6 +347,7 @@ struct stream *bpacket_reformat_for_peer(struct bpacket *pkt,
 	safi_t safi;
 	size_t attrlen_pos, mp_start, mplen_pos, total_attr_len, prefix_start, prefix_end;
 	enum rtc_prefix_list_type rtc_filter;
+	char *ecom_str;
 
 	peer = PAF_PEER(paf);
 	afi = paf->afi;
@@ -370,19 +371,18 @@ struct stream *bpacket_reformat_for_peer(struct bpacket *pkt,
 
 #define VPN_PREFIXLEN_MIN_BYTES (3 + 8) /* label + RD */
 
-		if (BGP_DEBUG(update, UPDATE_OUT)) {
-			p.family = afi2family(afi);
-			if (safi == SAFI_MPLS_VPN) {
-				/* Decode prefix for debugging. Only for L3VPN.
-				 * Decoding EVPN is too complex because several prefixes
-				 * can be sent in a single UPDATE message.
-				 */
-				vec = &pkt->arr.entries[BGP_ATTR_VEC_MP_PREFIX_LABEL];
-				prefixlen = stream_getc_from(pkt->buffer, vec->offset - 1);
-				p.prefixlen = prefixlen - VPN_PREFIXLEN_MIN_BYTES * 8;
-				memcpy(&p.u.val, pkt->buffer->data + vec->offset + 11,
-				       PSIZE(prefixlen) - VPN_PREFIXLEN_MIN_BYTES);
-			}
+		p.family = afi2family(afi);
+
+		if (safi == SAFI_MPLS_VPN && BGP_DEBUG(update, UPDATE_OUT)) {
+			/* Decode prefix for debugging. Only for L3VPN.
+			 * Decoding EVPN is too complex because several prefixes
+			 * can be sent in a single UPDATE message.
+			 */
+			vec = &pkt->arr.entries[BGP_ATTR_VEC_MP_PREFIX_LABEL];
+			prefixlen = stream_getc_from(pkt->buffer, vec->offset - 1);
+			p.prefixlen = prefixlen - VPN_PREFIXLEN_MIN_BYTES * 8;
+			memcpy(&p.u.val, pkt->buffer->data + vec->offset + 11,
+			       PSIZE(prefixlen) - VPN_PREFIXLEN_MIN_BYTES);
 		}
 
 		rtc_filter = bgp_rtc_filter(peer, &ecom, &p, false);
