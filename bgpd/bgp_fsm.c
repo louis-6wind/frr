@@ -2216,8 +2216,8 @@ bgp_establish(struct peer_connection *connection)
 				bgp_clear_stale_route(peer, afi, safi);
 			peer->nsf[afi][safi] = 0;
 		}
-		/* Update the graceful restart information */
 		if (peer->afc_nego[afi][safi]) {
+			/* Update the graceful restart information */
 			if (!BGP_SELECT_DEFER_DISABLE(peer->bgp)) {
 				status = bgp_update_gr_info(peer, afi, safi);
 				if (status < 0)
@@ -2232,6 +2232,8 @@ bgp_establish(struct peer_connection *connection)
 					peer->bgp->gr_info[afi][safi]
 						.eor_required++;
 			}
+			if (safi == SAFI_MPLS_VPN || safi == SAFI_EVPN)
+				bgp_peer_init_afi_rtc_plist(peer, afi);
 		}
 	}
 

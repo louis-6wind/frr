@@ -35,7 +35,10 @@ struct bgp_rtc_plist {
 	struct list *entries;
 	struct in_addr router_id;
 
-#define RTC_PLIST_NEW (1 << 0)
+#define RTC_PLIST_NEW_IPV4_VPN (1 << 0)
+#define RTC_PLIST_NEW_IPV6_VPN (1 << 1)
+#define RTC_PLIST_NEW_EVPN     (1 << 2)
+
 	uint8_t flags;
 };
 
@@ -57,8 +60,8 @@ extern char *bgp_rtc_prefix_display(char *buf, size_t size, uint16_t prefix_len,
 				    const struct rtc_info *rtc_info);
 
 extern void bgp_rtc_plist_free(void *arg);
-extern void bgp_peer_rtc_plist_reset_flags(struct peer *peer);
-extern void bgp_peer_rtc_plist_reset_early_flags(struct peer *peer);
+extern void bgp_peer_rtc_plist_reset_flags(struct peer *peer, afi_t afi, bool reset_entries);
+extern void bgp_peer_init_afi_rtc_plist(struct peer *peer, afi_t afi);
 extern struct bgp_rtc_plist *bgp_peer_get_rtc_plist(struct peer *peer);
 extern int bgp_rtc_plist_entry_set(struct peer *peer, struct prefix *p, bool add);
 extern void bgp_show_rtc_plist(struct vty *vty, struct bgp_rtc_plist *rtc_plist, bool json);
