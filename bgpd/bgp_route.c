@@ -369,6 +369,9 @@ void bgp_path_info_free_with_caller(const char *name,
 				    struct bgp_path_info *path)
 {
 	frrtrace(2, frr_bgp, bgp_path_info_free, path, name);
+
+	zlog_debug("DEBPROCESS %s: name %s pi %p", __func__, name, path);
+
 	bgp_attr_unintern(&path->attr);
 
 	bgp_unlink_nexthop(path);
@@ -512,6 +515,9 @@ void bgp_path_info_add_with_caller(const char *name, struct bgp_dest *dest,
 {
 	frrtrace(3, frr_bgp, bgp_path_info_add, dest, pi, name);
 	struct bgp_path_info *top;
+
+	zlog_debug("DEBPROCESS %s: name %s %pFX pi %p", __func__, name, bgp_dest_get_prefix(dest),
+		   pi);
 
 	top = bgp_dest_get_bgp_path_info(dest);
 
@@ -3934,12 +3940,13 @@ static void bgp_process_main_one(struct bgp *bgp, struct bgp_dest *dest,
 	}
 
 	/* TODO BMP insert rib update hook */
-	if (old_select)
+	if (old_select) {
+		zlog_debug("%s: %pBD UNsetting SELECTED flag pi %p", __func__, dest, old_select);
 		bgp_path_info_unset_flag(dest, old_select, BGP_PATH_SELECTED);
+	}
 	if (new_select) {
-		if (debug)
-			zlog_debug("%s: %pBD setting SELECTED flag", __func__,
-				   dest);
+		//		if (debug)
+		zlog_debug("%s: %pBD setting SELECTED flag pi %p", __func__, dest, new_select);
 		bgp_path_info_set_flag(dest, new_select, BGP_PATH_SELECTED);
 		bgp_path_info_unset_flag(dest, new_select,
 					 BGP_PATH_ATTR_CHANGED);
@@ -4680,6 +4687,7 @@ static void bgp_process_internal(struct bgp *bgp, struct bgp_dest *dest, struct 
 void bgp_process(struct bgp *bgp, struct bgp_dest *dest,
 		 struct bgp_path_info *pi, afi_t afi, safi_t safi)
 {
+	zlog_debug("DEBPROCESS %s: %pFX pi %p", __func__, bgp_dest_get_prefix(dest), pi);
 	bgp_process_internal(bgp, dest, pi, afi, safi,
 			     (safi == SAFI_RTC) ? META_QUEUE_RTC_ROUTE : META_QUEUE_OTHER_ROUTE);
 }
@@ -5869,6 +5877,7 @@ void bgp_update(struct peer *peer, const struct prefix *p, uint32_t addpath_id,
 
 	/* Make new BGP info. */
 	new = info_make(type, sub_type, 0, peer, attr_new, dest);
+	zlog_debug("DEBPROCESS %s: %pFX new pi %p", __func__, bgp_dest_get_prefix(dest), new);
 
 	/* Update MPLS label */
 	bgp_path_info_extra_get(new);
