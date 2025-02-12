@@ -2522,6 +2522,8 @@ static int bgp_update_receive(struct peer_connection *connection,
 	 * and MP EoR should have only an empty MP_UNREACH
 	 */
 	if (!update_len && !withdraw_len && nlris[NLRI_MP_UPDATE].length == 0) {
+		zlog_info("%s: rcvd End-of-RIB for %pBP ???", __func__, peer);
+
 		afi_t afi = 0;
 		safi_t safi;
 		struct graceful_restart_info *gr_info;
@@ -2590,6 +2592,8 @@ static int bgp_update_receive(struct peer_connection *connection,
 
 			if (peer->afc_nego[AFI_IP][SAFI_RTC] && !safi_rtc_refresh) {
 				SET_FLAG(peer->flags, PEER_FLAG_RTC_UPDATE);
+				zlog_debug("DEBFLAG %pBP set PEER_FLAG_RTC_UPDATE %s", peer,
+					   __func__);
 				bgp_add_rtc_eor_mark(peer->bgp);
 			}
 

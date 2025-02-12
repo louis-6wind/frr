@@ -689,12 +689,19 @@ void bgp_peer_init_afi_rtc_plist(struct peer *peer, afi_t afi)
 	if (!rtc_plist)
 		return;
 
-	if (afi == AFI_IP)
+	if (afi == AFI_IP) {
+		zlog_debug("DEBFLAG change %pBP rtc_plist->flags from %u to %u %s", peer,
+			   rtc_plist->flags, rtc_plist->flags & RTC_PLIST_NEW_IPV4_VPN, __func__);
 		SET_FLAG(rtc_plist->flags, RTC_PLIST_NEW_IPV4_VPN);
-	else if (afi == AFI_IP6)
+	} else if (afi == AFI_IP6) {
+		zlog_debug("DEBFLAG change %pBP rtc_plist->flags from %u to %u %s", peer,
+			   rtc_plist->flags, rtc_plist->flags & RTC_PLIST_NEW_IPV6_VPN, __func__);
 		SET_FLAG(rtc_plist->flags, RTC_PLIST_NEW_IPV6_VPN);
-	else if (afi == AFI_L2VPN)
+	} else if (afi == AFI_L2VPN) {
+		zlog_debug("DEBFLAG change %pBP rtc_plist->flags from %u to %u %s", peer,
+			   rtc_plist->flags, rtc_plist->flags & RTC_PLIST_NEW_EVPN, __func__);
 		SET_FLAG(rtc_plist->flags, RTC_PLIST_NEW_EVPN);
+	}
 }
 
 struct bgp_rtc_plist *bgp_peer_get_rtc_plist(struct peer *peer)
