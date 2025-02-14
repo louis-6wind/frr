@@ -421,34 +421,47 @@ int bgp_rtc_static_from_str(struct vty *vty, struct bgp *bgp, const char *str, b
 {
 	struct ecommunity *ecom = NULL;
 	int plen = BGP_RTC_MAX_PREFIXLEN;
-	char *pnt;
+	char *slash_pnt, *rt_pnt;
 	char *cp;
 	char *endptr;
 
 	/* Find slash inside string. */
-	pnt = strchr(str, '/');
+	slash_pnt = strchr(str, '/');
+	rt_pnt = strstr(str, ":RT:");
+	if (!rt_pnt)
+		rt_pnt = strstr(str, ":rt:");
 
 	/* String doesn't contain slash. */
-	if (pnt == NULL) {
+	if (slash_pnt == NULL && rt_pnt == NULL) {
 		ecom = ecommunity_str2com(str, ECOMMUNITY_ROUTE_TARGET, 0);
 		if (ecom == NULL) {
 			vty_out(vty, "%% Can't parse ecommunity %s\n", str);
 			return CMD_WARNING_CONFIG_FAILED;
 		}
-	} else {
-		plen = (uint8_t)strtol(++pnt, &endptr, 10);
+	} else if (slash_pnt) {
+		plen = (uint8_t)strtol(++slash_pnt, &endptr, 10);
 
 		/* If endptr == pnt, no digits were found; also check for leftover chars.
          * Check prefix length
          */
-		if (endptr == pnt || *endptr != '\0' ||
-		    (plen != 0 && (plen < 32 || plen > BGP_RTC_MAX_PREFIXLEN))) {
-			vty_out(vty, "%% Invalid prefix length %s \n", pnt);
+		if (endptr == slash_pnt || *endptr != '\0') {
+			vty_out(vty, "%% Invalid prefix length %s \n", slash_pnt);
 			return CMD_WARNING_CONFIG_FAILED;
 		}
 
+		if (endptr == slash_pnt || *endptr != '\0') {
+			vty_out(vty, "%% Invalid prefix length %s \n", slash_pnt);
+			return CMD_WARNING_CONFIG_FAILED;
+		}
+			||
+		    !(plen >= 0 && plen <= 32 && rt_pnt) || (plenplen > BGP_RTC_MAX_PREFIXLEN))) {
+
+
+		if (rt_pnt)
+			/* extract origin AS */
+
 		cp = XSTRDUP(MTYPE_TMP, str);
-		cp[(pnt - str) - 1] = '\0';
+		cp[(slash_pnt - str) - 1] = '\0';
 		ecom = ecommunity_str2com(cp, ECOMMUNITY_ROUTE_TARGET, 0);
 		XFREE(MTYPE_TMP, cp);
 
@@ -456,7 +469,8 @@ int bgp_rtc_static_from_str(struct vty *vty, struct bgp *bgp, const char *str, b
 			vty_out(vty, "%% Can't parse ecommunity %s\n", str);
 			return CMD_WARNING_CONFIG_FAILED;
 		}
-	}
+	} else
+		return CMD_WARNING_CONFIG_FAILED;
 
 	if (add)
 		bgp_rtc_add_static(bgp, (struct ecommunity_val *)ecom->val, plen);
