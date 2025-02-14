@@ -296,7 +296,8 @@ static void bgp_rtc_remove_static(struct bgp *bgp, struct ecommunity_val *eval, 
 	prefix.family = AF_RTC;
 	prefix.prefixlen = prefixlen;
 	prefix.u.prefix_rtc.origin_as = bgp->as;
-	memcpy(prefix.u.prefix_rtc.route_target, eval, PSIZE(prefixlen) - 4);
+	if (prefixlen >= 32)
+		memcpy(prefix.u.prefix_rtc.route_target, eval, PSIZE(prefixlen) - 4);
 	dest = bgp_node_get(bgp->route[AFI_IP][SAFI_RTC], &prefix);
 
 	if (!dest)
@@ -422,6 +423,7 @@ int bgp_rtc_static_from_str(struct vty *vty, struct bgp *bgp, const char *str, b
 	int plen = BGP_RTC_MAX_PREFIXLEN;
 	char *pnt;
 	char *cp;
+	char *endptr;
 
 	/* Find slash inside string. */
 	pnt = strchr(str, '/');
@@ -434,23 +436,24 @@ int bgp_rtc_static_from_str(struct vty *vty, struct bgp *bgp, const char *str, b
 			return CMD_WARNING_CONFIG_FAILED;
 		}
 	} else {
-		plen = (uint8_t)atoi(++pnt);
-		cp = XMALLOC(MTYPE_TMP, (pnt - str) + 1);
-		memcpy(cp, str, pnt - str - 1);
-		*(cp + (pnt - str) - 1) = '\0';
-		ecom = ecommunity_str2com(cp, ECOMMUNITY_ROUTE_TARGET, 0);
+		plen = (uint8_t)strtol(++pnt, &endptr, 10);
 
+		/* If endptr == pnt, no digits were found; also check for leftover chars.
+         * Check prefix length
+         */
+		if (endptr == pnt || *endptr != '\0' ||
+		    (plen != 0 && (plen < 32 || plen > BGP_RTC_MAX_PREFIXLEN))) {
+			vty_out(vty, "%% Invalid prefix length %s \n", pnt);
+			return CMD_WARNING_CONFIG_FAILED;
+		}
+
+		cp = XSTRDUP(MTYPE_TMP, str);
+		cp[(pnt - str) - 1] = '\0';
+		ecom = ecommunity_str2com(cp, ECOMMUNITY_ROUTE_TARGET, 0);
 		XFREE(MTYPE_TMP, cp);
 
 		if (ecom == NULL) {
 			vty_out(vty, "%% Can't parse ecommunity %s\n", str);
-			return CMD_WARNING_CONFIG_FAILED;
-		}
-
-		/* Get prefix length. */
-		if (plen != 0 && (plen < 32 || plen > BGP_RTC_MAX_PREFIXLEN)) {
-			ecommunity_free(&ecom);
-			vty_out(vty, "%% Invalid prefix length %d\n", plen);
 			return CMD_WARNING_CONFIG_FAILED;
 		}
 	}

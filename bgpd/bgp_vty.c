@@ -10329,7 +10329,7 @@ static int vpn_policy_getdirs(struct vty *vty, const char *dstr, int *dodir)
 /* For testing purpose, static route of RTC. */
 DEFUN(rtc_network, rtc_network_cmd, "rt WORD",
       "Add a route-target to announce\n"
-      "Specify the route-target e.g 65000:100/96\n")
+      "Specify the route-target e.g [65000:RT:]65000:100/96\n")
 {
 	VTY_DECLVAR_CONTEXT(bgp, bgp);
 	return bgp_rtc_static_from_str(vty, bgp, argv[1]->arg, true);
@@ -10340,7 +10340,7 @@ DEFUN(rtc_network, rtc_network_cmd, "rt WORD",
 DEFUN(no_rtc_network, no_rtc_network_cmd, "no rt WORD",
       NO_STR
       "Remove a route-target no longer to announce\n"
-      "Specify the route-target e.g 65000:100/96\n")
+      "Specify the route-target e.g [65000:RT:]65000:100/96\n")
 {
 	VTY_DECLVAR_CONTEXT(bgp, bgp);
 	return bgp_rtc_static_from_str(vty, bgp, argv[2]->arg, false);
