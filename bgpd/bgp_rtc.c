@@ -470,10 +470,10 @@ char *bgp_rtc_prefix_display(char *buf, size_t size, uint16_t prefix_len,
 {
 	char *cbuf = buf;
 
-	if (prefix_len == 96)
+	if (prefix_len > 32 && prefix_len <= 96)
 		snprintfrr(buf, size, "%u:%s", rtc_info->origin_as,
 			   ecommunity_rt_str(rtc_info->route_target));
-	else if (prefix_len == 32)
+	else if (prefix_len > 0 && prefix_len <= 32)
 		snprintfrr(buf, size, "%u:RT:0", rtc_info->origin_as);
 	else if (prefix_len == 0)
 		snprintfrr(buf, size, "0:RT:0");
