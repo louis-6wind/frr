@@ -4612,6 +4612,11 @@ incoming/outgoing directions.
 
    If the ``json`` option is specified, output is displayed in JSON format.
 
+.. clicmd:: show [ip] bgp ipv4 rt-constraint <ASN:rt:EF:OPQR|ASN:rt:GHJK:MN|ASN:rt:A.B.C.D:MN|ASN:rt:EF:OPQR/M|ASN:rt:GHJK:MN/M|ASN:rt:A.B.C.D:MN/M> [<bestpath|multipath>] [json]
+
+   Displays the specified RTC address or prefix. Optionally, the output can be filtered to only
+   show the bestpath or the multipathes.
+
 .. clicmd:: show [ip] bgp [afi] [safi] [all] self-originate [wide|json]
 
    Display self-originated routes.
