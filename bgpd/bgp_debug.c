@@ -1050,12 +1050,15 @@ DEFUN (no_debug_bgp_keepalive_peer,
 /* debug bgp bestpath */
 DEFPY (debug_bgp_bestpath_prefix,
        debug_bgp_bestpath_prefix_cmd,
-       "debug bgp bestpath <A.B.C.D/M|X:X::X:X/M>$prefix",
+       "debug bgp bestpath <A.B.C.D/M|X:X::X:X/M|ASN:rt:EF:OPQR/M|ASN:rt:GHJK:MN/M|ASN:rt:A.B.C.D:MN/M>$prefix",
        DEBUG_STR
        BGP_STR
        "BGP bestpath\n"
        "IPv4 prefix\n"
-       "IPv6 prefix\n")
+       "IPv6 prefix\n"
+       "RTC AS 2-bytes prefix\n"
+       "RTC AS 4-bytes prefix\n"
+       "RTC IP prefix\n")
 {
 	if (!bgp_debug_bestpath_prefixes)
 		bgp_debug_bestpath_prefixes = list_new();
@@ -1084,13 +1087,16 @@ DEFPY (debug_bgp_bestpath_prefix,
 
 DEFPY (no_debug_bgp_bestpath_prefix,
        no_debug_bgp_bestpath_prefix_cmd,
-       "no debug bgp bestpath <A.B.C.D/M|X:X::X:X/M>$prefix",
+       "no debug bgp bestpath <A.B.C.D/M|X:X::X:X/M|ASN:rt:EF:OPQR/M|ASN:rt:GHJK:MN/M|ASN:rt:A.B.C.D:MN/M>$prefix",
        NO_STR
        DEBUG_STR
        BGP_STR
        "BGP bestpath\n"
        "IPv4 prefix\n"
-       "IPv6 prefix\n")
+       "IPv6 prefix\n"
+       "RTC AS 2-bytes prefix\n"
+       "RTC AS 4-bytes prefix\n"
+       "RTC IP prefix\n")
 {
 	bool found_prefix = false;
 
