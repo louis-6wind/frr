@@ -63,14 +63,12 @@ def setup_module(mod):
     tgen = Topogen(build_topo, mod.__name__)
     tgen.start_topology()
 
-    for _, (rname, router) in enumerate(tgen.routers().items(), 1):
-        router.load_frr_config(
-            os.path.join(CWD, "{}/frr.conf".format(rname)),
-            [
-                (TopoRouter.RD_ZEBRA, None),
-                (TopoRouter.RD_MGMTD, None),
-                (TopoRouter.RD_ISIS, None),
-            ],
+    for rname, router in tgen.routers().items():
+        router.load_config(
+            TopoRouter.RD_ZEBRA, os.path.join(CWD, "{}/frr.conf".format(rname))
+        )
+        router.load_config(
+            TopoRouter.RD_ISIS, os.path.join(CWD, "{}/frr.conf".format(rname))
         )
 
     tgen.start_router()
