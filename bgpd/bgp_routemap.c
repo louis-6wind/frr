@@ -7774,8 +7774,9 @@ DEFPY_YANG(set_ecommunity_color, set_ecommunity_color_cmd,
 		"./set-action[action='frr-bgp-route-map:set-extcommunity-color']";
 	char xpath_value[XPATH_MAXLEN];
 
-	nb_cli_enqueue_change(vty, xpath, NB_OP_CREATE, NULL);
-
+	/* Only set the value. YANG creates the set-action entry with it, so
+	 * a value rejected by YANG does not leave an entry without value.
+	 */
 	snprintf(xpath_value, sizeof(xpath_value),
 		 "%s/rmap-set-action/frr-bgp-route-map:extcommunity-color",
 		 xpath);
