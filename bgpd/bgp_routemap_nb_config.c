@@ -14,6 +14,50 @@
 #include "bgpd/bgp_ecommunity.h"
 #include "bgpd/bgp_routemap_nb.h"
 
+/* Check a color: CO:COLOR, CO being 00, 01, 10 or 11 and COLOR being 1 to
+ * 4294967295.
+ */
+static bool set_ecommunity_color_valid(const char *color)
+{
+	unsigned long long value;
+	char *endptr;
+
+	if (strlen(color) <= 3 || color[2] != ':')
+		return false;
+	if ((color[0] != '0' && color[0] != '1') || (color[1] != '0' && color[1] != '1'))
+		return false;
+	color += 3;
+
+	if (color[0] < '1' || color[0] > '9')
+		return false;
+
+	errno = 0;
+	value = strtoull(color, &endptr, 10);
+	if (*endptr != '\0' || errno || value > UINT32_MAX)
+		return false;
+
+	return true;
+}
+
+/* Check each color of a space separated color list */
+static bool set_ecommunity_color_list_valid(const char *str)
+{
+	char *colors, *color, *saveptr = NULL;
+	bool valid = true;
+
+	colors = XSTRDUP(MTYPE_TMP, str);
+	for (color = strtok_r(colors, " \t", &saveptr); color;
+	     color = strtok_r(NULL, " \t", &saveptr)) {
+		if (!set_ecommunity_color_valid(color)) {
+			valid = false;
+			break;
+		}
+	}
+	XFREE(MTYPE_TMP, colors);
+
+	return valid;
+}
+
 /* Make sure the extended community value is parseable before it is
  * committed, otherwise a malformed value ends up in the running config
  * even though the route-map rule was never installed.
@@ -21,9 +65,16 @@
 static int bgp_route_set_ecommunity_validate(struct nb_cb_modify_args *args, int sub_type,
 					     const char *what)
 {
+	const char *str = yang_dnode_get_string(args->dnode, NULL);
 	struct ecommunity *ecom;
 
-	ecom = ecommunity_str2com(yang_dnode_get_string(args->dnode, NULL), sub_type, 0);
+	if (sub_type == ECOMMUNITY_COLOR && !set_ecommunity_color_list_valid(str)) {
+		snprintfrr(args->errmsg, args->errmsg_len, "%% Malformed extcommunity %s value",
+			   what);
+		return NB_ERR_VALIDATION;
+	}
+
+	ecom = ecommunity_str2com(str, sub_type, 0);
 	if (!ecom) {
 		snprintfrr(args->errmsg, args->errmsg_len, "%% Malformed extcommunity %s value",
 			   what);
