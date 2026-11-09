@@ -49,10 +49,8 @@ EXPECTED_SET_CLAUSES = {
     20: [],
 }
 
-# The rt, soo and nt values are plain strings in the YANG model, so only
-# the northbound validation callback can reject them. The color value
-# matches the YANG color-list pattern (it is read as "01:100" followed by
-# "01:5"), so it also gets as far as the validation callback.
+# The rt, soo, nt and color values are plain strings in the YANG model, so
+# only the northbound validation callback can reject them.
 MALFORMED_SET_VALUES = [
     ("rt", "1.2.3"),
     ("rt", "100"),
@@ -66,6 +64,7 @@ MALFORMED_SET_VALUES = [
     ("nt", "192.168.1.1:5"),
     ("nt", "192.168.1.1"),
     ("color", "01:10001:5"),
+    ("color", "abc"),
 ]
 
 MALFORMED_EXTCOMMUNITY_LIST_VALUES = [
